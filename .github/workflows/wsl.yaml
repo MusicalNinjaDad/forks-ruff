@@ -38,7 +38,6 @@ jobs:
       - name: "Install Rust toolchain"
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          source $HOME/.cargo/env
 
       - name: "Install insta snapshot testing"
         run: |
@@ -46,8 +45,9 @@ jobs:
 
       - name: "Install nextest"
         run: |
+          source $HOME/.cargo/env
           curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-          cargo binstall cargo-nextest --secure
+          cargo binstall cargo-nextest --secure -y
 
       - name: "Checkout repo"
         run: |
@@ -58,5 +58,7 @@ jobs:
       - name: "Run tests"
         env:
           NEXTEST_PROFILE: "ci"
-        run: cargo insta test --all-features --unreferenced reject --test-runner nextest
+        run: |
+          source $HOME/.cargo/env
+          cargo insta test --all-features --unreferenced reject --test-runner nextest
  
