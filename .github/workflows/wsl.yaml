@@ -13,10 +13,13 @@ jobs:
     steps:
       - name: "Setup WSL"
         uses: Vampire/setup-wsl@v5
+        with:
+          distribution: Ubuntu-24.04
 
       - name: "Who am I"
         run: |
           id
+          uname -a
 
       - name: "Working Directory"
         run: |
@@ -29,13 +32,17 @@ jobs:
 
       - name: "Install mold linker"
         run: |
-          apt install -y mold  
+          apt update
+          apt install -y mold
+
       - name: "Install Rust toolchain"
         run: |
           rustup show
+
       - name: "Install insta snapshot testing"
         run: |
           curl -LsSf https://insta.rs/install.sh | sh
+
       - name: "Install nextest"
         run: |
           curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
