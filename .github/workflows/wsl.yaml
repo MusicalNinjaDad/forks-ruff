@@ -26,3 +26,29 @@ jobs:
       - name: "Filesystems"
         run: |
           df -T
+
+      - name: "Install mold linker"
+        run: |
+          apt install -y mold  
+      - name: "Install Rust toolchain"
+        run: |
+          rustup show
+      - name: "Install insta snapshot testing"
+        run: |
+          curl -LsSf https://insta.rs/install.sh | sh
+      - name: "Install nextest"
+        run: |
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+          cargo binstall cargo-nextest --secure
+
+      - name: "Checkout repo"
+        run: |
+          git clone https://github.com/${{ github.repository }}.git .
+          git checkout ${{ github.sha }}
+          ls -al
+      
+      - name: "Run tests"
+        env:
+          NEXTEST_PROFILE: "ci"
+        run: cargo insta test --all-features --unreferenced reject --test-runner nextest
+ 
