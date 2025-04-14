@@ -17,8 +17,12 @@ jobs:
       - name: "Who am I"
         run: |
           id
+
+      - name: "Working Directory"
+        run: |
+          pwd
+          ls -al
       
       - name: "Filesystems"
         run: |
-          pwd
-          df
+          df -T
