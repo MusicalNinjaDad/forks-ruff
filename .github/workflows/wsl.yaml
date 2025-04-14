@@ -30,10 +30,10 @@ jobs:
         run: |
           df -T
 
-      - name: "Install mold linker"
+      - name: "Install gcc & mold"
         run: |
           apt update
-          apt install -y mold
+          apt install -y build-essential mold
 
       - name: "Install Rust toolchain"
         run: |
