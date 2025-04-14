@@ -1,0 +1,24 @@
+name: Test_on_WSL
+
+on:
+- push
+
+jobs:
+  install_wsl:
+    name: "Install WSL"
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: wsl-bash {0}
+    steps:
+      - name: "Setup WSL"
+        uses: Vampire/setup-wsl@v5
+
+      - name: "Who am I"
+        run: |
+          id
+      
+      - name: "Filesystems"
+        run: |
+          pwd
+          df
