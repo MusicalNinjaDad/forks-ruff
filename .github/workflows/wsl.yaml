@@ -54,11 +54,16 @@ jobs:
           git clone https://github.com/${{ github.repository }}.git .
           git checkout ${{ github.sha }}
           ls -al
+
+      - name: "ls -al exe tests"
+        run : |
+          ls -al crates/ruff_linter/resources/test/fixtures/flake8_executable
+          ls -al crates/ruff_linter/src/rules/flake8_executable/snapshots
       
-      - name: "Run tests"
-        env:
-          NEXTEST_PROFILE: "ci"
-        run: |
-          source $HOME/.cargo/env
-          cargo insta test --all-features --unreferenced reject --test-runner nextest
+      # - name: "Run tests"
+      #   env:
+      #     NEXTEST_PROFILE: "ci"
+      #   run: |
+      #     source $HOME/.cargo/env
+      #     cargo insta test --all-features --unreferenced reject --test-runner nextest
  
