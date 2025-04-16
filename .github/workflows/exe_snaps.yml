@@ -27,5 +27,5 @@ jobs:
       - name: "Run tests"
         shell: bash
         env:
-          NEXTEST_PROFILE: "ci"
-        run: cargo insta test --unreferenced reject --test-runner nextest --package ruff_linter
+          NEXTEST_PROFILE: "ci-short"
+        run: cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
