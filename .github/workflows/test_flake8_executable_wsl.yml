@@ -129,6 +129,7 @@ jobs:
           path: .wsl_cache
       - name: "Import cached Distro"
         shell: cmd
+        working-directory: ${{ runner.temp }}
         run: |
           wsl --update
           wsl --import-in-place Ubuntu-24.04 ${{ runner.temp }}/.wsl_cache/ubuntu_ruff.vhdx
