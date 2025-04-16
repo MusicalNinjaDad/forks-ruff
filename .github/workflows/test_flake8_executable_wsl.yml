@@ -101,5 +101,5 @@ jobs:
         shell: cmd
         run: |
           mkdir wsl_cache
-          wsl --export --vhd Ubuntu-24.04 wsl_cache/ubuntu_ruff
+          wsl --export --vhd Ubuntu-24.04 wsl_cache/ubuntu_ruff.vhdx
           dir wsl_cache
