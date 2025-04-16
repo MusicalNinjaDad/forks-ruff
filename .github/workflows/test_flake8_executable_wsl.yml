@@ -1,3 +1,5 @@
+name: check flake8_executable lints
+
 on:
   push:
     branches: ["wsl**"]
