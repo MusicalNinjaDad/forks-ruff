@@ -18,7 +18,7 @@ jobs:
         uses: actions/cache@v4
         with:
           key: wsl_cache_v1
-          path: .wsl_cache
+          path: ${{ runner.temp }}/.wsl_cache
       - name: "Setup WSL"
         if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
         uses: Vampire/setup-wsl@v5
@@ -62,7 +62,7 @@ jobs:
           wsl --list
           wsl --shutdown
           mkdir .wsl_cache
-          wsl --export --vhd Ubuntu-24.04 .wsl_cache/ubuntu_ruff.vhdx
+          wsl --export --vhd Ubuntu-24.04 ${{ runner.temp }}/.wsl_cache/ubuntu_ruff.vhdx
           dir .wsl_cache
   
   test_wsl_ntfs:
@@ -87,7 +87,7 @@ jobs:
         shell: cmd
         run: |
           wsl --update
-          wsl --import-in-place Ubuntu-24.04 .wsl_cache/ubuntu_ruff.vhdx
+          wsl --import-in-place Ubuntu-24.04 ${{ runner.temp }}/.wsl_cache/ubuntu_ruff.vhdx
       - name: "Setup WSL"
         uses: Vampire/setup-wsl@v5
         with:
@@ -131,7 +131,7 @@ jobs:
         shell: cmd
         run: |
           wsl --update
-          wsl --import-in-place Ubuntu-24.04 .wsl_cache/ubuntu_ruff.vhdx
+          wsl --import-in-place Ubuntu-24.04 ${{ runner.temp }}/.wsl_cache/ubuntu_ruff.vhdx
       - name: "Setup WSL"
         uses: Vampire/setup-wsl@v5
         with:
