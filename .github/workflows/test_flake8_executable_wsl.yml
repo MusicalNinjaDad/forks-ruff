@@ -4,37 +4,12 @@ on:
   push:
     branches: ["wsl**"]
   workflow_dispatch:
-      
-jobs:
-  # test_linux:
-  #   runs-on: ubuntu-latest
-  #   timeout-minutes: 20
-  #   steps:
-  #     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-  #       with:
-  #         persist-credentials: false
-  #     - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2.7.8
-  #     - name: "Install Rust toolchain"
-  #       run: rustup show
-  #     - name: "Install mold"
-  #       uses: rui314/setup-mold@v1
-  #     - name: "Install cargo nextest"
-  #       uses: taiki-e/install-action@be7c31b6745feec79dec5eb79178466c0670bb2d # v2
-  #       with:
-  #         tool: cargo-nextest
-  #     - name: "Install cargo insta"
-  #       uses: taiki-e/install-action@be7c31b6745feec79dec5eb79178466c0670bb2d # v2
-  #       with:
-  #         tool: cargo-insta
-  #     - name: "Run tests"
-  #       shell: bash
-  #       env:
-  #         NEXTEST_PROFILE: "ci-short"
-  #       run: cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
 
+jobs:
   install_wsl:
     name: "Install WSL (cached as wsl_cache_v1)"
     runs-on: windows-latest
+    timeout-minutes: 20
     defaults:
       run:
         shell: wsl-bash {0}
@@ -50,25 +25,21 @@ jobs:
         with:
           distribution: Ubuntu-24.04
           use-cache: 'false'
+          additional-packages:
+            build-essential
+            mold
       - name: "Who am I"
         if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
         run: |
           id
           uname -a
-      - name: "Working Directory"
-        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
-        run: |
-          pwd
-          ls -al
       - name: "Filesystems"
         if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
         run: |
           df -T
-      - name: "Install gcc & mold"
-        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
+      - name: "Create native working dir"
         run: |
-          apt update
-          apt install -y build-essential mold
+          mkdir /${{ github.repository }}
       - name: "Install Rust toolchain"
         if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
         run: |
@@ -93,11 +64,12 @@ jobs:
           wsl --export --vhd Ubuntu-24.04 .wsl_cache/ubuntu_ruff.vhdx
           dir .wsl_cache
   
-  test_wsl:
+  test_wsl_ntfs:
     needs:
       install_wsl
-    name: "Run tests on WSL"
+    name: "Run tests on WSL - mounted NTFS filesystem"
     runs-on: windows-latest
+    timeout-minutes: 20
     defaults:
       run:
         shell: wsl-bash {0}
@@ -137,3 +109,82 @@ jobs:
         run: |
           source $HOME/.cargo/env
           cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
+
+  test_wsl_ext4:
+    needs:
+      install_wsl
+    name: "Run tests on WSL Native filesystem"
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: wsl-bash {0}
+        working-directory: /${{ github.repository }}
+    steps:
+      - id: cache-wsl
+        uses: actions/cache@v4
+        with:
+          key: wsl_cache_v1
+          path: .wsl_cache
+      - name: "Import cached Distro"
+        shell: cmd
+        run: |
+          wsl --update
+          wsl --import-in-place Ubuntu-24.04 .wsl_cache/ubuntu_ruff.vhdx
+      - name: "Setup WSL"
+        uses: Vampire/setup-wsl@v5
+        with:
+          distribution: Ubuntu-24.04
+          use-cache: 'false'
+      - name: "Who am I"
+        run: |
+          id
+          uname -a
+      - name: "Checkout (manually)"
+        run: |
+          git config --global --add safe.directory /${{ github.repository }}
+          git init /${{ github.repository }}
+          git config --local gc.auto 0
+          git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +${{ github.sha }}:refs/remotes/origin/${{ github.ref_name }}
+          git sparse-checkout disable
+          git config --local --unset-all extensions.worktreeConfig
+          git checkout --progress --force -B ${{ github.ref_name }} refs/remotes/origin/${{ github.ref_name }}
+      - name: "Working Directory"
+        run: |
+          pwd
+          ls -al
+      - name: "Filesystems"
+        run: |
+          df -T
+      - name: "Run tests"
+        env:
+          NEXTEST_PROFILE: "ci-short"
+        run: |
+          source $HOME/.cargo/env
+          cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
+
+  test_linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2.7.8
+      - name: "Install Rust toolchain"
+        run: rustup show
+      - name: "Install mold"
+        uses: rui314/setup-mold@v1
+      - name: "Install cargo nextest"
+        uses: taiki-e/install-action@be7c31b6745feec79dec5eb79178466c0670bb2d # v2
+        with:
+          tool: cargo-nextest
+      - name: "Install cargo insta"
+        uses: taiki-e/install-action@be7c31b6745feec79dec5eb79178466c0670bb2d # v2
+        with:
+          tool: cargo-insta
+      - name: "Run tests"
+        shell: bash
+        env:
+          NEXTEST_PROFILE: "ci-short"
+        run: cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
