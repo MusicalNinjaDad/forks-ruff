@@ -6,28 +6,100 @@ on:
   workflow_dispatch:
       
 jobs:
-  test_linux:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+  # test_linux:
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 20
+  #   steps:
+  #     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+  #       with:
+  #         persist-credentials: false
+  #     - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2.7.8
+  #     - name: "Install Rust toolchain"
+  #       run: rustup show
+  #     - name: "Install mold"
+  #       uses: rui314/setup-mold@v1
+  #     - name: "Install cargo nextest"
+  #       uses: taiki-e/install-action@be7c31b6745feec79dec5eb79178466c0670bb2d # v2
+  #       with:
+  #         tool: cargo-nextest
+  #     - name: "Install cargo insta"
+  #       uses: taiki-e/install-action@be7c31b6745feec79dec5eb79178466c0670bb2d # v2
+  #       with:
+  #         tool: cargo-insta
+  #     - name: "Run tests"
+  #       shell: bash
+  #       env:
+  #         NEXTEST_PROFILE: "ci-short"
+  #       run: cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
+
+  install_wsl:
+    name: "Install WSL (cached as wsl_cache_v1)"
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: wsl-bash {0}
+
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - id: cache-wsl
+        uses: actions/cache@v4
         with:
-          persist-credentials: false
-      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2.7.8
+          key: wsl_cache_v1
+          path: wsl_cache
+      
+      - name: "Import cached Distro"
+        if: ${{ steps.cache-wsl.outputs.cache-hit }}
+        shell: cmd
+        run: |
+          wsl --import-in-place Ubuntu-24.04 wsl_cache/ubuntu_ruff
+
+      - name: "Setup WSL"
+        uses: Vampire/setup-wsl@v5
+        with:
+          distribution: Ubuntu-24.04
+          use-cache: 'false'
+
+      - name: "Who am I"
+        run: |
+          id
+          uname -a
+
+      - name: "Working Directory"
+        run: |
+          pwd
+          ls -al
+      
+      - name: "Filesystems"
+        run: |
+          df -T
+
+      - name: "Install gcc & mold"
+        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
+        run: |
+          apt update
+          apt install -y build-essential mold
+
       - name: "Install Rust toolchain"
-        run: rustup show
-      - name: "Install mold"
-        uses: rui314/setup-mold@v1
-      - name: "Install cargo nextest"
-        uses: taiki-e/install-action@be7c31b6745feec79dec5eb79178466c0670bb2d # v2
-        with:
-          tool: cargo-nextest
-      - name: "Install cargo insta"
-        uses: taiki-e/install-action@be7c31b6745feec79dec5eb79178466c0670bb2d # v2
-        with:
-          tool: cargo-insta
-      - name: "Run tests"
-        shell: bash
-        env:
-          NEXTEST_PROFILE: "ci-short"
-        run: cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
+        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+
+      - name: "Install insta snapshot testing"
+        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
+        run: |
+          curl -LsSf https://insta.rs/install.sh | sh
+
+      - name: "Install nextest"
+        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
+        run: |
+          source $HOME/.cargo/env
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+          cargo binstall cargo-nextest --secure -y
+    
+      - name: "Export distro for cache"
+        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
+        shell: cmd
+        run: |
+          mkdir wsl_cache
+          wsl --export --vhd Ubuntu-24.04 wsl_cache/ubuntu_ruff
+          dir wsl_cache
