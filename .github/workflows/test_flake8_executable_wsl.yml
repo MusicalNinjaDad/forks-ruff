@@ -38,6 +38,7 @@ jobs:
         run: |
           df -T
       - name: "Create native working dir"
+        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
         run: |
           mkdir /${{ github.repository }}
       - name: "Install Rust toolchain"
