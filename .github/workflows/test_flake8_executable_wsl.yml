@@ -46,30 +46,28 @@ jobs:
         with:
           key: wsl_cache_v1
           path: .wsl_cache
-      
-      - name: "Import cached Distro"
-        if: ${{ steps.cache-wsl.outputs.cache-hit }}
-        shell: cmd
-        run: |
-          wsl --import-in-place Ubuntu-24.04 .wsl_cache/ubuntu_ruff.vhdx
 
       - name: "Setup WSL"
+        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
         uses: Vampire/setup-wsl@v5
         with:
           distribution: Ubuntu-24.04
           use-cache: 'false'
 
       - name: "Who am I"
+        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
         run: |
           id
           uname -a
 
       - name: "Working Directory"
+        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
         run: |
           pwd
           ls -al
       
       - name: "Filesystems"
+        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
         run: |
           df -T
 
@@ -130,6 +128,9 @@ jobs:
       - name: "Import cached Distro"
         shell: cmd
         run: |
+          wsl --version
+          wsl --update
+          wsl --version
           wsl --import-in-place Ubuntu-24.04 .wsl_cache/ubuntu_ruff.vhdx
 
       - name: "Setup WSL"
