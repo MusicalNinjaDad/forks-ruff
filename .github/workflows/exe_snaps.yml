@@ -28,4 +28,4 @@ jobs:
         shell: bash
         env:
           NEXTEST_PROFILE: "ci"
-        run: cargo insta test --unreferenced reject --test-runner nextest --package ruff_linter -- flake8_executable
+        run: cargo insta test --no-force-pass --test-runner nextest --package ruff_linter -- flake8_executable
