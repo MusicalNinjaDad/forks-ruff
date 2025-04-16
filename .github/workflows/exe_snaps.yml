@@ -28,4 +28,4 @@ jobs:
         shell: bash
         env:
           NEXTEST_PROFILE: "ci"
-        run: cargo nextest run flake8_executable
+        run: cargo nextest run --package ruff_linter flake8_executable
