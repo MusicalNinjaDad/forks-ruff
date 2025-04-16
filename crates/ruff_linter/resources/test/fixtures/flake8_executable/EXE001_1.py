@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 if __name__ == '__main__':
     #EXE001 Checks for a shebang directive in a file that is not executable.
     executable = False
