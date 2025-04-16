@@ -128,9 +128,7 @@ jobs:
       - name: "Import cached Distro"
         shell: cmd
         run: |
-          wsl --version
           wsl --update
-          wsl --version
           wsl --import-in-place Ubuntu-24.04 .wsl_cache/ubuntu_ruff.vhdx
 
       - name: "Setup WSL"
