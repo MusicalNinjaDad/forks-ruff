@@ -154,4 +154,6 @@ jobs:
       - name: "Run tests"
         env:
           NEXTEST_PROFILE: "ci-short"
-        run: cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
+        run: |
+          source $HOME/.cargo/env
+          cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
