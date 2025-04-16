@@ -51,7 +51,7 @@ jobs:
         if: ${{ steps.cache-wsl.outputs.cache-hit }}
         shell: cmd
         run: |
-          wsl --import-in-place Ubuntu-24.04 wsl_cache/ubuntu_ruff
+          wsl --import-in-place Ubuntu-24.04 .wsl_cache/ubuntu_ruff.vhdx
 
       - name: "Setup WSL"
         uses: Vampire/setup-wsl@v5
@@ -105,3 +105,54 @@ jobs:
           mkdir .wsl_cache
           wsl --export --vhd Ubuntu-24.04 .wsl_cache/ubuntu_ruff.vhdx
           dir .wsl_cache
+  
+  test_wsl:
+    needs:
+      install_wsl
+    name: "Run tests on WSL"
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: wsl-bash {0}
+
+    steps:
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - id: cache-wsl
+        uses: actions/cache@v4
+        with:
+          key: wsl_cache_v1
+          path: .wsl_cache
+
+      - name: "Import cached Distro"
+        shell: cmd
+        run: |
+          wsl --import-in-place Ubuntu-24.04 .wsl_cache/ubuntu_ruff.vhdx
+
+      - name: "Setup WSL"
+        uses: Vampire/setup-wsl@v5
+        with:
+          distribution: Ubuntu-24.04
+          use-cache: 'false'
+
+      - name: "Who am I"
+        run: |
+          id
+          uname -a
+
+      - name: "Working Directory"
+        run: |
+          pwd
+          ls -al
+      
+      - name: "Filesystems"
+        run: |
+          df -T
+      
+      - name: "Run tests"
+        env:
+          NEXTEST_PROFILE: "ci-short"
+        run: cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
