@@ -45,7 +45,7 @@ jobs:
         uses: actions/cache@v4
         with:
           key: wsl_cache_v1
-          path: wsl_cache
+          path: .wsl_cache
       
       - name: "Import cached Distro"
         if: ${{ steps.cache-wsl.outputs.cache-hit }}
@@ -100,6 +100,8 @@ jobs:
         if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
         shell: cmd
         run: |
-          mkdir wsl_cache
-          wsl --export --vhd Ubuntu-24.04 wsl_cache/ubuntu_ruff.vhdx
-          dir wsl_cache
+          wsl --list
+          wsl --shutdown
+          mkdir .wsl_cache
+          wsl --export --vhd Ubuntu-24.04 .wsl_cache/ubuntu_ruff.vhdx
+          dir .wsl_cache
