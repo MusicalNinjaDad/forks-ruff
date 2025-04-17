@@ -77,10 +77,10 @@ jobs:
           fail-on-cache-miss: true
       - id: build_cache
         name: Restore rust build cache (if available)
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
-          key: "${{ github.workflow }}-${{ github.job }}-build_cache"
-          path: ${{ github.workspace}}/target
+          key: ${{ github.job }}-build_cache
+          path: ${{ github.workspace }}/target
       - name: "Import cached Distro"
         shell: pwsh
         env:
@@ -114,6 +114,12 @@ jobs:
         run: |
           source $HOME/.cargo/env
           cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
+      - name: "Save build cache"
+        if: ${{ !cancelled() }}
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ steps.build_cache.outputs.cache-primary-key }}
+          path: ${{ github.workspace }}/target
 
   test_wsl_ext4:
     needs:
