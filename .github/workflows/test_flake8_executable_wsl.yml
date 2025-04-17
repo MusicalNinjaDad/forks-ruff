@@ -17,7 +17,7 @@ jobs:
       EXT4_WORKSPACE: "/workspaces/${{ github.repository }}"
     outputs:
       cache_key: ${{ steps.calc_vars.outputs.cache_key }}
-      cache_path: ${{ steps.calc_vars.outputs.cache_location }}
+      cache_path: ${{ steps.calc_vars.outputs.cache_path }}
       vhdx_file: ${{ steps.calc_vars.outputs.vhdx_file }}
       distro: ${{ env.DISTRO }}
       ext4_workspace: ${{ env.EXT4_WORKSPACE }}
@@ -32,8 +32,8 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $cachePath = Join-Path ${{ runner.temp }} $env:CACHE_DIR
-          Write-Output "cache_location=$cachePath"
-          Write-Output "cache_location=$cachePath" >> $env:GITHUB_OUTPUT
+          Write-Output "cache_path=$cachePath"
+          Write-Output "cache_path=$cachePath" >> $env:GITHUB_OUTPUT
           $vhdxPath = Join-Path $cachePath $env:CACHE_FILE
           Write-Output "vhdx_file=$vhdxPath"
           Write-Output "vhdx_file=$vhdxPath" >> $env:GITHUB_OUTPUT
@@ -44,14 +44,14 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           key: ${{ steps.calc_vars.outputs.cache_key }}
-          path: ${{ steps.calc_vars.outputs.cache_location}}
+          path: ${{ steps.calc_vars.outputs.cache_path}}
           lookup-only: true
       - name: "Create and cache distro"
         if: ${{ steps.check-wsl-cache.outputs.cache-hit != 'true'}}
         uses: ./.github/actions/cache-wsl-distro
         with:
           cache_key: ${{ steps.calc_vars.outputs.cache_key }}
-          cache_path: ${{ steps.calc_vars.outputs.cache_location }}
+          cache_path: ${{ steps.calc_vars.outputs.cache_path }}
           vhdx_file: ${{ steps.calc_vars.outputs.vhdx_file }}
           distro: ${{ env.DISTRO }}
           ext4_workspace: ${{ env.EXT4_WORKSPACE }}

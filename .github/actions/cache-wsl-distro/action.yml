@@ -58,13 +58,13 @@ runs:
     - name: "Export distro for cache"
       shell: pwsh
       env:
-        CACHE_LOCATION: ${{ inputs.cache_location }}
+        CACHE_PATH: ${{ inputs.cache_path }}
         VHDX_FILE: ${{ inputs.vhdx_file }}
       run: |
         $ErrorActionPreference = 'Stop'
         wsl --list
         wsl --shutdown
-        New-Item -ItemType Directory -Path $env:CACHE_LOCATION -Force
+        New-Item -ItemType Directory -Path $env:CACHE_PATH -Force
         wsl --export --vhd $env:DISTRO $env:VHDX_FILE
     - name: "Check vhdx file exists"
       id: check
