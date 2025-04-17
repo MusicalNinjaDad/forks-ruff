@@ -7,23 +7,46 @@ on:
 
 jobs:
   install_wsl:
-    name: "Install WSL (cached as wsl_cache_v1)"
+    name: "Cache WSL vhdx"
     runs-on: windows-latest
     timeout-minutes: 20
+    env:
+      cache_key: "wsl_cache_v2"
+      cache_file: "ubuntu_ruff.vhdx"
+      cache_dir: ".wsl_cache"
+      distro: "Ubuntu-24.04"
+      ext4_workspace: "/${{ github.repository }}"
+    outputs:
+      cache_key: ${{ env.cache_key }}
+      cache_location: ${{ steps.tmpdir.outputs.cache_location }}
+      vhdx_file: ${{ steps.tmpdir.outputs.vhdx_file }}
+      distro: ${{ env.distro }}
+      ext4_workspace: ${{ env.ext4_workspace }}
     defaults:
       run:
         shell: wsl-bash {0}
     steps:
+      - id: tmpdir
+        name: "Identify full path to cache_dir"
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $cachePath = Join-Path ${{ runner.temp }} $env:cache_dir
+          Write-Output "cache_location=$cachePath"
+          Write-Output "cache_location=$cachePath" >> $env:GITHUB_OUTPUT
+          $vhdxPath = Join-Path $cachePath $env:cache_file
+          Write-Output "vhdx_file=$vhdxPath"
+          Write-Output "vhdx_file=$vhdxPath" >> $env:GITHUB_OUTPUT
       - id: cache-wsl
         uses: actions/cache@v4
         with:
-          key: wsl_cache_v1
-          path: ${{ runner.temp }}/.wsl_cache
+          key: ${{ env.cache_key }}
+          path: ${{ steps.tmpdir.outputs.cache_location}}
       - name: "Setup WSL"
         if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
         uses: Vampire/setup-wsl@v5
         with:
-          distribution: Ubuntu-24.04
+          distribution: ${{ env.distro }}
           use-cache: 'false'
           additional-packages:
             build-essential
@@ -37,10 +60,10 @@ jobs:
         if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
         run: |
           df -T
-      - name: "Create native working dir"
+      - name: "Create dir for ext4 workspace"
         if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
         run: |
-          mkdir --parents /${{ github.repository }}
+          mkdir --parents $EXT4_WORKSPACE
       - name: "Install Rust toolchain"
         if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
         run: |
@@ -58,13 +81,28 @@ jobs:
       - name: "Export distro for cache"
         if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
         shell: pwsh
+        env:
+          cache_location: ${{ steps.tmpdir.outputs.cache_location }}
+          vhdx_file: ${{ steps.tmpdir.outputs.vhdx_file }}
         run: |
           $ErrorActionPreference = 'Stop'
           wsl --list
           wsl --shutdown
-          New-Item -ItemType Directory -Path ${{ runner.temp }}/.wsl_cache -Force
-          wsl --export --vhd Ubuntu-24.04 ${{ runner.temp }}/.wsl_cache/ubuntu_ruff.vhdx
-          Get-ChildItem ${{ runner.temp }}/.wsl_cache
+          New-Item -ItemType Directory -Path $env:cache_location -Force
+          wsl --export --vhd $env:distro $env:vhdx_file
+      - name: "Check vhdx file exists"
+        id: check
+        shell: pwsh
+        env:
+          vhdx_file: ${{ steps.tmpdir.outputs.vhdx_file }}
+        run: |
+            $ErrorActionPreference = 'Stop'
+            if (Test-Path $env:vhdx_file) {
+            exit 0
+            } else {
+            Write-Error "File not found: $env:vhdx_file"
+            exit 1
+            }
   
   test_wsl_ntfs:
     needs:
@@ -82,17 +120,23 @@ jobs:
       - id: cache-wsl
         uses: actions/cache@v4
         with:
-          key: wsl_cache_v1
-          path: ${{ runner.temp }}/.wsl_cache
+          key: ${{ needs.install_wsl.outputs.cache_key }}
+          path: ${{ needs.install_wsl.outputs.cache_location }}
       - name: "Import cached Distro"
-        shell: cmd
+        shell: pwsh
+        env:
+          vhdx_file: ${{ needs.install_wsl.outputs.vhdx_file }}
+          distro: ${{ needs.install_wsl.outputs.distro }}
         run: |
+          $ErrorActionPreference = 'Stop'
+          Write-Output "Updating WSL"
           wsl --update
-          wsl --import-in-place Ubuntu-24.04 ${{ runner.temp }}/.wsl_cache/ubuntu_ruff.vhdx
+          Write-Output "Importing $env:vhdx_file as $env:distro"
+          wsl --import-in-place $env:distro $env:vhdx_file
       - name: "Setup WSL"
         uses: Vampire/setup-wsl@v5
         with:
-          distribution: Ubuntu-24.04
+          distribution: ${{ needs.install_wsl.outputs.distro }}
           use-cache: 'false'
       - name: "Who am I"
         run: |
@@ -121,21 +165,29 @@ jobs:
     defaults:
       run:
         shell: wsl-bash {0}
+    env:
+        WORKSPACEDIR: ${{ needs.install_wsl.outputs.ext4_workspace }}
     steps:
       - id: cache-wsl
         uses: actions/cache@v4
         with:
-          key: wsl_cache_v1
-          path: ${{ runner.temp }}/.wsl_cache
+          key: ${{ needs.install_wsl.outputs.cache_key }}
+          path: ${{ needs.install_wsl.outputs.cache_location }}
       - name: "Import cached Distro"
-        shell: cmd
+        shell: pwsh
+        env:
+          vhdx_file: ${{ needs.install_wsl.outputs.vhdx_file }}
+          distro: ${{ needs.install_wsl.outputs.distro }}
         run: |
+          $ErrorActionPreference = 'Stop'
+          Write-Output "Updating WSL"
           wsl --update
-          wsl --import-in-place Ubuntu-24.04 ${{ runner.temp }}/.wsl_cache/ubuntu_ruff.vhdx
+          Write-Output "Importing $env:vhdx_file as $env:distro"
+          wsl --import-in-place $env:distro $env:vhdx_file
       - name: "Setup WSL"
         uses: Vampire/setup-wsl@v5
         with:
-          distribution: Ubuntu-24.04
+          distribution: ${{ needs.install_wsl.outputs.distro }}
           use-cache: 'false'
       - name: "Who am I"
         run: |
@@ -143,30 +195,32 @@ jobs:
           uname -a
       - name: "Checkout (manually)"
         # Needs hardening - move ref_name & repository to env var
+        env:
+          BRANCHNAME: ${{ github.ref_name }}
         run: |
-          cd /${{ github.repository }}
-          git config --global --add safe.directory /${{ github.repository }}
-          git init /${{ github.repository }}
-          git remote add origin  https://github.com/${{ github.repository }}
+          cd $WORKSPACEDIR
+          git config --global --add safe.directory $WORKSPACEDIR
+          git init $WORKSPACEDIR
+          git remote add origin  https://github.com$WORKSPACEDIR
           git config --local gc.auto 0
-          git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +${{ github.sha }}:refs/remotes/origin/${{ github.ref_name }}
+          git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +${{ github.sha }}:refs/remotes/origin/$BRANCHNAME
           git sparse-checkout disable
           git config --local --unset-all extensions.worktreeConfig
-          git checkout --progress --force -B ${{ github.ref_name }} refs/remotes/origin/${{ github.ref_name }}
+          git checkout --progress --force -B $BRANCHNAME refs/remotes/origin/$BRANCHNAME
       - name: "Working Directory"
         run: |
-          cd /${{ github.repository }}
+          cd $WORKSPACEDIR
           pwd
           ls -al
       - name: "Filesystems"
         run: |
-          cd /${{ github.repository }}
+          cd $WORKSPACEDIR
           df -T
       - name: "Run tests"
         env:
           NEXTEST_PROFILE: "ci-short"
         run: |
-          cd /${{ github.repository }}
+          cd $WORKSPACEDIR
           source $HOME/.cargo/env
           cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
 
