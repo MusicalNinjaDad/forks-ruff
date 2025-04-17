@@ -142,10 +142,12 @@ jobs:
           id
           uname -a
       - name: "Checkout (manually)"
+        # Needs hardening - move ref_name to env var
         run: |
           cd /${{ github.repository }}
           git config --global --add safe.directory /${{ github.repository }}
           git init /${{ github.repository }}
+          git remote add origin ${{ github.repositoryUrl }}
           git config --local gc.auto 0
           git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +${{ github.sha }}:refs/remotes/origin/${{ github.ref_name }}
           git sparse-checkout disable
