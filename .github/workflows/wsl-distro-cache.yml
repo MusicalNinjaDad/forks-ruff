@@ -1,0 +1,130 @@
+name: "Cache WSL vhdx"
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+on:
+  workflow_call:
+    outputs:
+      cache_key: 
+        description: "The cache key to use with actions/cache"
+        value: ${{ jobs.install_wsl.outputs.cache_key }}
+      cache_path:
+        description: "The path to use with actions/cache"
+        value: ${{ jobs.install_wsl.outputs.cache_location }}
+      vhdx_file:
+        description: "The full path to the vhdx file restored by actions/cache"
+        value:  ${{ jobs.install_wsl.outputs.vhdx_file }}
+      distro:
+        description: "The distro name to use with wsl --import-in-place and Vampire/setup-wsl"
+        value: ${{ jobs.install_wsl.outputs.distro }}
+      ext4_workspace:
+        description: "The path to the workspace directory on the wsl ext4 filesystem"
+        value: ${{ jobs.install_wsl.outputs.ext4_workspace }}
+  workflow_dispatch:
+  push:
+    paths: 
+      '.github/workflows/wsl-distro-cache.yml'
+
+jobs:
+  install_wsl:
+    name: "Check/Create WSL vhdx"
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      CACHE_FILE: "ubuntu_ruff.vhdx"
+      CACHE_DIR: ".wsl_cache"
+      DISTRO: "Ubuntu-24.04"
+      EXT4_WORKSPACE: "/${{ github.repository }}"
+    outputs:
+      cache_key: ${{ steps.tmpdir.outputs.cache_key }}
+      cache_location: ${{ steps.tmpdir.outputs.cache_location }}
+      vhdx_file: ${{ steps.tmpdir.outputs.vhdx_file }}
+      distro: ${{ env.DISTRO }}
+      ext4_workspace: ${{ env.EXT4_WORKSPACE }}
+    defaults:
+      run:
+        shell: wsl-bash {0}
+    steps:
+      - uses: actions/checkout@v4
+      - id: tmpdir
+        name: "Calculate paths & key"
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $cachePath = Join-Path ${{ runner.temp }} $env:CACHE_DIR
+          Write-Output "cache_location=$cachePath"
+          Write-Output "cache_location=$cachePath" >> $env:GITHUB_OUTPUT
+          $vhdxPath = Join-Path $cachePath $env:CACHE_FILE
+          Write-Output "vhdx_file=$vhdxPath"
+          Write-Output "vhdx_file=$vhdxPath" >> $env:GITHUB_OUTPUT
+          $workflowHash = Get-FileHash .github/workflows/wsl-distro-cache.yml
+          Write-Output "cache_key=wsl_distro_cache-$workflowHash"
+          Write-Output "cache_key=wsl_distro_cache-$workflowHash" >> $env:GITHUB_OUTPUT
+      - id: cache-wsl
+        uses: actions/cache@v4
+        with:
+          key: ${{ steps.tmpdir.outputs.cache_key }}
+          path: ${{ steps.tmpdir.outputs.cache_location}}
+      - name: "Setup WSL"
+        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
+        uses: Vampire/setup-wsl@v5
+        with:
+          distribution: ${{ env.DISTRO }}
+          use-cache: 'false'
+          additional-packages:
+            build-essential
+            mold
+      - name: "Who am I"
+        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
+        run: |
+          id
+          uname -a
+      - name: "Filesystems"
+        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
+        run: |
+          df -T
+      - name: "Create dir for ext4 workspace"
+        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
+        run: |
+          mkdir --parents ${{ env.EXT4_WORKSPACE }}
+      - name: "Install Rust toolchain"
+        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      - name: "Install insta snapshot testing"
+        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
+        run: |
+          curl -LsSf https://insta.rs/install.sh | sh
+      - name: "Install nextest"
+        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
+        run: |
+          source $HOME/.cargo/env
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+          cargo binstall cargo-nextest --secure -y
+      - name: "Export distro for cache"
+        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
+        shell: pwsh
+        env:
+          CACHE_LOCATION: ${{ steps.tmpdir.outputs.cache_location }}
+          VHDX_FILE: ${{ steps.tmpdir.outputs.vhdx_file }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          wsl --list
+          wsl --shutdown
+          New-Item -ItemType Directory -Path $env:CACHE_LOCATION -Force
+          wsl --export --vhd $env:DISTRO $env:VHDX_FILE
+      - name: "Check vhdx file exists"
+        id: check
+        shell: pwsh
+        env:
+          VHDX_FILE: ${{ steps.tmpdir.outputs.vhdx_file }}
+        run: |
+            $ErrorActionPreference = 'Stop'
+            if (Test-Path $env:VHDX_FILE) {
+            exit 0
+            } else {
+            Write-Error "File not found: $env:VHDX_FILE"
+            exit 1
+            }

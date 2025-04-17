@@ -6,107 +6,13 @@ on:
   workflow_dispatch:
 
 jobs:
-  install_wsl:
-    name: "Cache WSL vhdx"
-    runs-on: windows-latest
-    timeout-minutes: 20
-    env:
-      CACHE_KEY: "wsl_cache_v2"
-      CACHE_FILE: "ubuntu_ruff.vhdx"
-      CACHE_DIR: ".wsl_cache"
-      DISTRO: "Ubuntu-24.04"
-      EXT4_WORKSPACE: "/${{ github.repository }}"
-    outputs:
-      CACHE_KEY: ${{ env.CACHE_KEY }}
-      CACHE_LOCATION: ${{ steps.tmpdir.outputs.CACHE_LOCATION }}
-      VHDX_FILE: ${{ steps.tmpdir.outputs.VHDX_FILE }}
-      DISTRO: ${{ env.DISTRO }}
-      EXT4_WORKSPACE: ${{ env.EXT4_WORKSPACE }}
-    defaults:
-      run:
-        shell: wsl-bash {0}
-    steps:
-      - id: tmpdir
-        name: "Identify full path to cache"
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $cachePath = Join-Path ${{ runner.temp }} $env:CACHE_DIR
-          Write-Output "CACHE_LOCATION=$cachePath"
-          Write-Output "CACHE_LOCATION=$cachePath" >> $env:GITHUB_OUTPUT
-          $vhdxPath = Join-Path $cachePath $env:CACHE_FILE
-          Write-Output "VHDX_FILE=$vhdxPath"
-          Write-Output "VHDX_FILE=$vhdxPath" >> $env:GITHUB_OUTPUT
-      - id: cache-wsl
-        uses: actions/cache@v4
-        with:
-          key: ${{ env.CACHE_KEY }}
-          path: ${{ steps.tmpdir.outputs.CACHE_LOCATION}}
-      - name: "Setup WSL"
-        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
-        uses: Vampire/setup-wsl@v5
-        with:
-          distribution: ${{ env.DISTRO }}
-          use-cache: 'false'
-          additional-packages:
-            build-essential
-            mold
-      - name: "Who am I"
-        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
-        run: |
-          id
-          uname -a
-      - name: "Filesystems"
-        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
-        run: |
-          df -T
-      - name: "Create dir for ext4 workspace"
-        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
-        run: |
-          mkdir --parents ${{ env.EXT4_WORKSPACE }}
-      - name: "Install Rust toolchain"
-        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-      - name: "Install insta snapshot testing"
-        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
-        run: |
-          curl -LsSf https://insta.rs/install.sh | sh
-      - name: "Install nextest"
-        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
-        run: |
-          source $HOME/.cargo/env
-          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-          cargo binstall cargo-nextest --secure -y
-      - name: "Export distro for cache"
-        if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
-        shell: pwsh
-        env:
-          CACHE_LOCATION: ${{ steps.tmpdir.outputs.CACHE_LOCATION }}
-          VHDX_FILE: ${{ steps.tmpdir.outputs.VHDX_FILE }}
-        run: |
-          $ErrorActionPreference = 'Stop'
-          wsl --list
-          wsl --shutdown
-          New-Item -ItemType Directory -Path $env:CACHE_LOCATION -Force
-          wsl --export --vhd $env:DISTRO $env:VHDX_FILE
-      - name: "Check vhdx file exists"
-        id: check
-        shell: pwsh
-        env:
-          VHDX_FILE: ${{ steps.tmpdir.outputs.VHDX_FILE }}
-        run: |
-            $ErrorActionPreference = 'Stop'
-            if (Test-Path $env:VHDX_FILE) {
-            exit 0
-            } else {
-            Write-Error "File not found: $env:VHDX_FILE"
-            exit 1
-            }
+  find_wsl_cache:
+    uses: ./.github/workflows/wsl-distro-cache.yml
+    
   
   test_wsl_ntfs:
     needs:
-      install_wsl
+      find_wsl_cache
     name: "Run tests on WSL - mounted NTFS filesystem"
     runs-on: windows-latest
     timeout-minutes: 20
@@ -120,13 +26,13 @@ jobs:
       - id: cache-wsl
         uses: actions/cache@v4
         with:
-          key: ${{ needs.install_wsl.outputs.CACHE_KEY }}
-          path: ${{ needs.install_wsl.outputs.CACHE_LOCATION }}
+          key: ${{ needs.find_wsl_cache.outputs.cache_key }}
+          path: ${{ needs.find_wsl_cache.outputs.cache_path }}
       - name: "Import cached Distro"
         shell: pwsh
         env:
-          VHDX_FILE: ${{ needs.install_wsl.outputs.VHDX_FILE }}
-          DISTRO: ${{ needs.install_wsl.outputs.DISTRO }}
+          VHDX_FILE: ${{ needs.find_wsl_cache.outputs.vhdx_file }}
+          DISTRO: ${{ needs.find_wsl_cache.outputs.distro }}
         run: |
           $ErrorActionPreference = 'Stop'
           Write-Output "Updating WSL"
@@ -136,7 +42,7 @@ jobs:
       - name: "Setup WSL"
         uses: Vampire/setup-wsl@v5
         with:
-          distribution: ${{ needs.install_wsl.outputs.DISTRO }}
+          distribution: ${{ needs.find_wsl_cache.outputs.distro }}
           use-cache: 'false'
       - name: "Who am I"
         run: |
@@ -158,7 +64,7 @@ jobs:
 
   test_wsl_ext4:
     needs:
-      install_wsl
+      find_wsl_cache
     name: "Run tests on WSL Native filesystem"
     runs-on: windows-latest
     timeout-minutes: 20
@@ -166,18 +72,18 @@ jobs:
       run:
         shell: wsl-bash {0}
     env:
-        WORKSPACEDIR: ${{ needs.install_wsl.outputs.EXT4_WORKSPACE }}
+        WORKSPACEDIR: ${{ needs.find_wsl_cache.outputs.ext4_workspace }}
     steps:
       - id: cache-wsl
         uses: actions/cache@v4
         with:
-          key: ${{ needs.install_wsl.outputs.CACHE_KEY }}
-          path: ${{ needs.install_wsl.outputs.CACHE_LOCATION }}
+          key: ${{ needs.find_wsl_cache.outputs.cache_key }}
+          path: ${{ needs.find_wsl_cache.outputs.cache_path }}
       - name: "Import cached Distro"
         shell: pwsh
         env:
-          VHDX_FILE: ${{ needs.install_wsl.outputs.VHDX_FILE }}
-          DISTRO: ${{ needs.install_wsl.outputs.DISTRO }}
+          VHDX_FILE: ${{ needs.find_wsl_cache.outputs.vhdx_file }}
+          DISTRO: ${{ needs.find_wsl_cache.outputs.distro }}
         run: |
           $ErrorActionPreference = 'Stop'
           Write-Output "Updating WSL"
@@ -187,7 +93,7 @@ jobs:
       - name: "Setup WSL"
         uses: Vampire/setup-wsl@v5
         with:
-          distribution: ${{ needs.install_wsl.outputs.DISTRO }}
+          distribution: ${{ needs.find_wsl_cache.outputs.distro }}
           use-cache: 'false'
       - name: "Who am I"
         run: |
@@ -201,7 +107,7 @@ jobs:
           cd ${{ env.WORKSPACEDIR }}
           git config --global --add safe.directory ${{ env.WORKSPACEDIR }}
           git init ${{ env.WORKSPACEDIR }}
-          git remote add origin  https://github.com${{ env.WORKSPACEDIR }}
+          git remote add origin https://github.com/${{ github.repository }}
           git config --local gc.auto 0
           git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +${{ github.sha }}:refs/remotes/origin/${{ env.BRANCHNAME }}
           git sparse-checkout disable
