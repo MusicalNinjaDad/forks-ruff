@@ -56,9 +56,9 @@ jobs:
           $vhdxPath = Join-Path $cachePath $env:CACHE_FILE
           Write-Output "vhdx_file=$vhdxPath"
           Write-Output "vhdx_file=$vhdxPath" >> $env:GITHUB_OUTPUT
-          $workflowHash = Get-FileHash .github/workflows/wsl-distro-cache.yml
-          Write-Output "cache_key=wsl_distro_cache-$workflowHash.Hash"
-          Write-Output "cache_key=wsl_distro_cache-$workflowHash.Hash" >> $env:GITHUB_OUTPUT
+          $workflowHash = (Get-FileHash .github/workflows/wsl-distro-cache.yml).Hash
+          Write-Output "cache_key=wsl_distro_cache-$workflowHash"
+          Write-Output "cache_key=wsl_distro_cache-$workflowHash" >> $env:GITHUB_OUTPUT
       - id: cache-wsl
         uses: actions/cache@v4
         with:
