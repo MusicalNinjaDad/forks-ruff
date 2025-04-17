@@ -28,6 +28,12 @@ jobs:
         with:
           key: ${{ needs.find_wsl_cache.outputs.cache_key }}
           path: ${{ needs.find_wsl_cache.outputs.cache_path }}
+      - id: build_cache
+        name: Restore rust build cache (if available)
+        uses: actions/cache@v4
+        with:
+          key: ${{ github.workflow }}-${{ github.job }}-build_cache
+          path: ${{ github.workspace}}/target
       - name: "Import cached Distro"
         shell: pwsh
         env:
