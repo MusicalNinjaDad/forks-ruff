@@ -11,42 +11,42 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 20
     env:
-      cache_key: "wsl_cache_v2"
-      cache_file: "ubuntu_ruff.vhdx"
-      cache_dir: ".wsl_cache"
-      distro: "Ubuntu-24.04"
-      ext4_workspace: "/${{ github.repository }}"
+      CACHE_KEY: "wsl_cache_v2"
+      CACHE_FILE: "ubuntu_ruff.vhdx"
+      CACHE_DIR: ".wsl_cache"
+      DISTRO: "Ubuntu-24.04"
+      EXT4_WORKSPACE: "/${{ github.repository }}"
     outputs:
-      cache_key: ${{ env.cache_key }}
-      cache_location: ${{ steps.tmpdir.outputs.cache_location }}
-      vhdx_file: ${{ steps.tmpdir.outputs.vhdx_file }}
-      distro: ${{ env.distro }}
-      ext4_workspace: ${{ env.ext4_workspace }}
+      CACHE_KEY: ${{ env.CACHE_KEY }}
+      CACHE_LOCATION: ${{ steps.tmpdir.outputs.CACHE_LOCATION }}
+      VHDX_FILE: ${{ steps.tmpdir.outputs.VHDX_FILE }}
+      DISTRO: ${{ env.DISTRO }}
+      EXT4_WORKSPACE: ${{ env.EXT4_WORKSPACE }}
     defaults:
       run:
         shell: wsl-bash {0}
     steps:
       - id: tmpdir
-        name: "Identify full path to cache_dir"
+        name: "Identify full path to cache"
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $cachePath = Join-Path ${{ runner.temp }} $env:cache_dir
-          Write-Output "cache_location=$cachePath"
-          Write-Output "cache_location=$cachePath" >> $env:GITHUB_OUTPUT
-          $vhdxPath = Join-Path $cachePath $env:cache_file
-          Write-Output "vhdx_file=$vhdxPath"
-          Write-Output "vhdx_file=$vhdxPath" >> $env:GITHUB_OUTPUT
+          $cachePath = Join-Path ${{ runner.temp }} $env:CACHE_DIR
+          Write-Output "CACHE_LOCATION=$cachePath"
+          Write-Output "CACHE_LOCATION=$cachePath" >> $env:GITHUB_OUTPUT
+          $vhdxPath = Join-Path $cachePath $env:CACHE_FILE
+          Write-Output "VHDX_FILE=$vhdxPath"
+          Write-Output "VHDX_FILE=$vhdxPath" >> $env:GITHUB_OUTPUT
       - id: cache-wsl
         uses: actions/cache@v4
         with:
-          key: ${{ env.cache_key }}
-          path: ${{ steps.tmpdir.outputs.cache_location}}
+          key: ${{ env.CACHE_KEY }}
+          path: ${{ steps.tmpdir.outputs.CACHE_LOCATION}}
       - name: "Setup WSL"
         if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
         uses: Vampire/setup-wsl@v5
         with:
-          distribution: ${{ env.distro }}
+          distribution: ${{ env.DISTRO }}
           use-cache: 'false'
           additional-packages:
             build-essential
@@ -82,25 +82,25 @@ jobs:
         if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
         shell: pwsh
         env:
-          cache_location: ${{ steps.tmpdir.outputs.cache_location }}
-          vhdx_file: ${{ steps.tmpdir.outputs.vhdx_file }}
+          CACHE_LOCATION: ${{ steps.tmpdir.outputs.CACHE_LOCATION }}
+          VHDX_FILE: ${{ steps.tmpdir.outputs.VHDX_FILE }}
         run: |
           $ErrorActionPreference = 'Stop'
           wsl --list
           wsl --shutdown
-          New-Item -ItemType Directory -Path $env:cache_location -Force
-          wsl --export --vhd $env:distro $env:vhdx_file
+          New-Item -ItemType Directory -Path $env:CACHE_LOCATION -Force
+          wsl --export --vhd $env:DISTRO $env:VHDX_FILE
       - name: "Check vhdx file exists"
         id: check
         shell: pwsh
         env:
-          vhdx_file: ${{ steps.tmpdir.outputs.vhdx_file }}
+          VHDX_FILE: ${{ steps.tmpdir.outputs.VHDX_FILE }}
         run: |
             $ErrorActionPreference = 'Stop'
-            if (Test-Path $env:vhdx_file) {
+            if (Test-Path $env:VHDX_FILE) {
             exit 0
             } else {
-            Write-Error "File not found: $env:vhdx_file"
+            Write-Error "File not found: $env:VHDX_FILE"
             exit 1
             }
   
@@ -120,23 +120,23 @@ jobs:
       - id: cache-wsl
         uses: actions/cache@v4
         with:
-          key: ${{ needs.install_wsl.outputs.cache_key }}
-          path: ${{ needs.install_wsl.outputs.cache_location }}
+          key: ${{ needs.install_wsl.outputs.CACHE_KEY }}
+          path: ${{ needs.install_wsl.outputs.CACHE_LOCATION }}
       - name: "Import cached Distro"
         shell: pwsh
         env:
-          vhdx_file: ${{ needs.install_wsl.outputs.vhdx_file }}
-          distro: ${{ needs.install_wsl.outputs.distro }}
+          VHDX_FILE: ${{ needs.install_wsl.outputs.VHDX_FILE }}
+          DISTRO: ${{ needs.install_wsl.outputs.DISTRO }}
         run: |
           $ErrorActionPreference = 'Stop'
           Write-Output "Updating WSL"
           wsl --update
-          Write-Output "Importing $env:vhdx_file as $env:distro"
-          wsl --import-in-place $env:distro $env:vhdx_file
+          Write-Output "Importing $env:VHDX_FILE as $env:DISTRO"
+          wsl --import-in-place $env:DISTRO $env:VHDX_FILE
       - name: "Setup WSL"
         uses: Vampire/setup-wsl@v5
         with:
-          distribution: ${{ needs.install_wsl.outputs.distro }}
+          distribution: ${{ needs.install_wsl.outputs.DISTRO }}
           use-cache: 'false'
       - name: "Who am I"
         run: |
@@ -166,28 +166,28 @@ jobs:
       run:
         shell: wsl-bash {0}
     env:
-        WORKSPACEDIR: ${{ needs.install_wsl.outputs.ext4_workspace }}
+        WORKSPACEDIR: ${{ needs.install_wsl.outputs.EXT4_WORKSPACE }}
     steps:
       - id: cache-wsl
         uses: actions/cache@v4
         with:
-          key: ${{ needs.install_wsl.outputs.cache_key }}
-          path: ${{ needs.install_wsl.outputs.cache_location }}
+          key: ${{ needs.install_wsl.outputs.CACHE_KEY }}
+          path: ${{ needs.install_wsl.outputs.CACHE_LOCATION }}
       - name: "Import cached Distro"
         shell: pwsh
         env:
-          vhdx_file: ${{ needs.install_wsl.outputs.vhdx_file }}
-          distro: ${{ needs.install_wsl.outputs.distro }}
+          VHDX_FILE: ${{ needs.install_wsl.outputs.VHDX_FILE }}
+          DISTRO: ${{ needs.install_wsl.outputs.DISTRO }}
         run: |
           $ErrorActionPreference = 'Stop'
           Write-Output "Updating WSL"
           wsl --update
-          Write-Output "Importing $env:vhdx_file as $env:distro"
-          wsl --import-in-place $env:distro $env:vhdx_file
+          Write-Output "Importing $env:VHDX_FILE as $env:DISTRO"
+          wsl --import-in-place $env:DISTRO $env:VHDX_FILE
       - name: "Setup WSL"
         uses: Vampire/setup-wsl@v5
         with:
-          distribution: ${{ needs.install_wsl.outputs.distro }}
+          distribution: ${{ needs.install_wsl.outputs.DISTRO }}
           use-cache: 'false'
       - name: "Who am I"
         run: |
