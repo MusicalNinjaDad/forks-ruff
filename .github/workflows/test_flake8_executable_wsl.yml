@@ -57,13 +57,14 @@ jobs:
           cargo binstall cargo-nextest --secure -y
       - name: "Export distro for cache"
         if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
-        shell: cmd
+        shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
           wsl --list
           wsl --shutdown
-          mkdir .wsl_cache
+          New-Item -ItemType Directory -Path ${{ runner.temp }}/.wsl_cache -Force
           wsl --export --vhd Ubuntu-24.04 ${{ runner.temp }}/.wsl_cache/ubuntu_ruff.vhdx
-          dir .wsl_cache
+          Get-ChildItem ${{ runner.temp }}/.wsl_cache
   
   test_wsl_ntfs:
     needs:
@@ -82,7 +83,7 @@ jobs:
         uses: actions/cache@v4
         with:
           key: wsl_cache_v1
-          path: .wsl_cache
+          path: ${{ runner.temp }}/.wsl_cache
       - name: "Import cached Distro"
         shell: cmd
         run: |
@@ -126,7 +127,7 @@ jobs:
         uses: actions/cache@v4
         with:
           key: wsl_cache_v1
-          path: .wsl_cache
+          path: ${{ runner.temp }}/.wsl_cache
       - name: "Import cached Distro"
         shell: cmd
         working-directory: ${{ runner.temp }}
