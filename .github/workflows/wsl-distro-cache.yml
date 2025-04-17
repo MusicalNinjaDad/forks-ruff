@@ -23,9 +23,6 @@ on:
         description: "The path to the workspace directory on the wsl ext4 filesystem"
         value: ${{ jobs.install_wsl.outputs.ext4_workspace }}
   workflow_dispatch:
-  push:
-    paths: 
-      '.github/workflows/wsl-distro-cache.yml'
 
 jobs:
   install_wsl:
