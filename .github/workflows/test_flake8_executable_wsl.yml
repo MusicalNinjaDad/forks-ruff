@@ -63,7 +63,7 @@ jobs:
       - name: "Create dir for ext4 workspace"
         if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
         run: |
-          mkdir --parents $EXT4_WORKSPACE
+          mkdir --parents ${{ env.EXT4_WORKSPACE }}
       - name: "Install Rust toolchain"
         if: ${{ steps.cache-wsl.outputs.cache-hit != 'true'}}
         run: |
@@ -198,10 +198,10 @@ jobs:
         env:
           BRANCHNAME: ${{ github.ref_name }}
         run: |
-          cd $WORKSPACEDIR
-          git config --global --add safe.directory $WORKSPACEDIR
-          git init $WORKSPACEDIR
-          git remote add origin  https://github.com$WORKSPACEDIR
+          cd ${{ env.WORKSPACEDIR }}
+          git config --global --add safe.directory ${{ env.WORKSPACEDIR }}
+          git init ${{ env.WORKSPACEDIR }}
+          git remote add origin  https://github.com${{ env.WORKSPACEDIR }}
           git config --local gc.auto 0
           git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +${{ github.sha }}:refs/remotes/origin/$BRANCHNAME
           git sparse-checkout disable
@@ -209,18 +209,18 @@ jobs:
           git checkout --progress --force -B $BRANCHNAME refs/remotes/origin/$BRANCHNAME
       - name: "Working Directory"
         run: |
-          cd $WORKSPACEDIR
+          cd ${{ env.WORKSPACEDIR }}
           pwd
           ls -al
       - name: "Filesystems"
         run: |
-          cd $WORKSPACEDIR
+          cd ${{ env.WORKSPACEDIR }}
           df -T
       - name: "Run tests"
         env:
           NEXTEST_PROFILE: "ci-short"
         run: |
-          cd $WORKSPACEDIR
+          cd ${{ env.WORKSPACEDIR }}
           source $HOME/.cargo/env
           cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
 
