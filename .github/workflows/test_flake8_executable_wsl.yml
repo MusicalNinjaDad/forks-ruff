@@ -121,7 +121,6 @@ jobs:
     defaults:
       run:
         shell: wsl-bash {0}
-        working-directory: /${{ github.repository }}
     steps:
       - id: cache-wsl
         uses: actions/cache@v4
@@ -130,7 +129,6 @@ jobs:
           path: ${{ runner.temp }}/.wsl_cache
       - name: "Import cached Distro"
         shell: cmd
-        working-directory: ${{ runner.temp }}
         run: |
           wsl --update
           wsl --import-in-place Ubuntu-24.04 ${{ runner.temp }}/.wsl_cache/ubuntu_ruff.vhdx
@@ -145,6 +143,7 @@ jobs:
           uname -a
       - name: "Checkout (manually)"
         run: |
+          cd /${{ github.repository }}
           git config --global --add safe.directory /${{ github.repository }}
           git init /${{ github.repository }}
           git config --local gc.auto 0
@@ -154,15 +153,18 @@ jobs:
           git checkout --progress --force -B ${{ github.ref_name }} refs/remotes/origin/${{ github.ref_name }}
       - name: "Working Directory"
         run: |
+          cd /${{ github.repository }}
           pwd
           ls -al
       - name: "Filesystems"
         run: |
+          cd /${{ github.repository }}
           df -T
       - name: "Run tests"
         env:
           NEXTEST_PROFILE: "ci-short"
         run: |
+          cd /${{ github.repository }}
           source $HOME/.cargo/env
           cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
 
