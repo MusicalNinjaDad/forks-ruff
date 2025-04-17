@@ -7,8 +7,54 @@ on:
 
 jobs:
   find_wsl_cache:
-    uses: ./.github/workflows/wsl-distro-cache.yml
-    
+    name: "Check/Create WSL vhdx"
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      CACHE_FILE: "ubuntu_ruff.vhdx"
+      CACHE_DIR: ".wsl_cache"
+      DISTRO: "Ubuntu-24.04"
+      EXT4_WORKSPACE: "/workspaces/${{ github.repository }}"
+    outputs:
+      cache_key: ${{ steps.calc_vars.outputs.cache_key }}
+      cache_path: ${{ steps.calc_vars.outputs.cache_location }}
+      vhdx_file: ${{ steps.calc_vars.outputs.vhdx_file }}
+      distro: ${{ env.DISTRO }}
+      ext4_workspace: ${{ env.EXT4_WORKSPACE }}
+    defaults:
+      run:
+        shell: wsl-bash {0}
+    steps:
+      - uses: actions/checkout@v4
+      - id: calc_vars
+        name: "Calculate paths & key"
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $cachePath = Join-Path ${{ runner.temp }} $env:CACHE_DIR
+          Write-Output "cache_location=$cachePath"
+          Write-Output "cache_location=$cachePath" >> $env:GITHUB_OUTPUT
+          $vhdxPath = Join-Path $cachePath $env:CACHE_FILE
+          Write-Output "vhdx_file=$vhdxPath"
+          Write-Output "vhdx_file=$vhdxPath" >> $env:GITHUB_OUTPUT
+          $workflowHash = (Get-FileHash .github/actions/cache-wsl-distro/action.yml).Hash
+          Write-Output "cache_key=wsl_distro_cache-$workflowHash"
+          Write-Output "cache_key=wsl_distro_cache-$workflowHash" >> $env:GITHUB_OUTPUT
+      - id: check-wsl-cache
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ steps.calc_vars.outputs.cache_key }}
+          path: ${{ steps.calc_vars.outputs.cache_location}}
+          lookup-only: true
+      - name: "Create and cache distro"
+        if: ${{ steps.check-wsl-cache.outputs.cache-hit != 'true'}}
+        uses: ./.github/actions/cache-wsl-distro
+        with:
+          cache_key: ${{ steps.calc_vars.outputs.cache_key }}
+          cache_path: ${{ steps.calc_vars.outputs.cache_location }}
+          vhdx_file: ${{ steps.calc_vars.outputs.vhdx_file }}
+          distro: ${{ env.DISTRO }}
+          ext4_workspace: ${{ env.EXT4_WORKSPACE }}
   
   test_wsl_ntfs:
     needs:
@@ -23,11 +69,12 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
-      - id: cache-wsl
-        uses: actions/cache@v4
+      - name: "Get wsl distro from cache"
+        uses: actions/cache/restore@v4
         with:
           key: ${{ needs.find_wsl_cache.outputs.cache_key }}
           path: ${{ needs.find_wsl_cache.outputs.cache_path }}
+          fail-on-cache-miss: true
       - id: build_cache
         name: Restore rust build cache (if available)
         uses: actions/cache@v4
@@ -80,11 +127,12 @@ jobs:
     env:
         WORKSPACEDIR: ${{ needs.find_wsl_cache.outputs.ext4_workspace }}
     steps:
-      - id: cache-wsl
-        uses: actions/cache@v4
+      - name: "Get wsl distro from cache"
+        uses: actions/cache/restore@v4
         with:
           key: ${{ needs.find_wsl_cache.outputs.cache_key }}
           path: ${{ needs.find_wsl_cache.outputs.cache_path }}
+          fail-on-cache-miss: true
       - name: "Import cached Distro"
         shell: pwsh
         env:

@@ -1,0 +1,86 @@
+name: "Create and cache WSL vhdx"
+
+inputs:
+  cache_key: 
+    description: "The cache key to use with actions/cache"
+    required: true
+  cache_path:
+    description: "The path to use with actions/cache"
+    required: true
+  vhdx_file:
+    description: "The full path to the vhdx file restored by actions/cache"
+    required: true
+  distro:
+    description: "The distro name to use with wsl --import-in-place and Vampire/setup-wsl"
+    required: true
+  ext4_workspace:
+    description: "The path to the workspace directory on the wsl ext4 filesystem"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Setup WSL"
+      uses: Vampire/setup-wsl@v5
+      with:
+        distribution: ${{ inputs.distro }}
+        use-cache: 'false'
+        additional-packages:
+          build-essential
+          mold
+    - name: "Who am I"
+      shell: wsl-bash {0}
+      run: |
+        id
+        uname -a
+    - name: "Filesystems"
+      shell: wsl-bash {0}
+      run: |
+        df -T
+    - name: "Create dir for ext4 workspace"
+      shell: wsl-bash {0}
+      run: |
+        mkdir --parents ${{ inputs.ext4_workspace }}
+    - name: "Install Rust toolchain"
+      shell: wsl-bash {0}
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    - name: "Install insta snapshot testing"
+      shell: wsl-bash {0}
+      run: |
+        curl -LsSf https://insta.rs/install.sh | sh
+    - name: "Install nextest"
+      shell: wsl-bash {0}
+      run: |
+        source $HOME/.cargo/env
+        curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+        cargo binstall cargo-nextest --secure -y
+    - name: "Export distro for cache"
+      shell: pwsh
+      env:
+        CACHE_LOCATION: ${{ inputs.cache_location }}
+        VHDX_FILE: ${{ inputs.vhdx_file }}
+      run: |
+        $ErrorActionPreference = 'Stop'
+        wsl --list
+        wsl --shutdown
+        New-Item -ItemType Directory -Path $env:CACHE_LOCATION -Force
+        wsl --export --vhd $env:DISTRO $env:VHDX_FILE
+    - name: "Check vhdx file exists"
+      id: check
+      shell: pwsh
+      env:
+        VHDX_FILE: ${{ inputs.vhdx_file }}
+      run: |
+          $ErrorActionPreference = 'Stop'
+          if (Test-Path $env:VHDX_FILE) {
+          exit 0
+          } else {
+          Write-Error "File not found: $env:VHDX_FILE"
+          exit 1
+          }
+    - name: "Write cache"
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ inputs.cache_path }}
+        key: ${{ inputs.cache_key }}
