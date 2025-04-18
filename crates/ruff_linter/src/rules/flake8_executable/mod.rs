@@ -45,4 +45,28 @@ mod tests {
         assert_messages!(snapshot, diagnostics);
         Ok(())
     }
+
+    #[test_case(Path::new("EXE003.py"))]
+    #[test_case(Path::new("EXE003_uv.py"))]
+    #[test_case(Path::new("EXE004_1.py"))]
+    #[test_case(Path::new("EXE004_2.py"))]
+    #[test_case(Path::new("EXE004_3.py"))]
+    #[test_case(Path::new("EXE004_4.py"))]
+    #[test_case(Path::new("EXE005_1.py"))]
+    #[test_case(Path::new("EXE005_2.py"))]
+    #[test_case(Path::new("EXE005_3.py"))]
+    #[cfg(wsl)]
+    fn rules_wsl(path: &Path) -> Result<()> {
+        let snapshot = path.to_string_lossy().into_owned();
+        let diagnostics = test_path(
+            Path::new("flake8_executable").join(path).as_path(),
+            &settings::LinterSettings::for_rules(vec![
+                Rule::ShebangLeadingWhitespace,
+                Rule::ShebangNotFirstLine,
+                Rule::ShebangMissingPython,
+            ]),
+        )?;
+        assert_messages!(snapshot, diagnostics);
+        Ok(())
+    }
 }
