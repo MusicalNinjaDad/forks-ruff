@@ -1,9 +1,198 @@
+name: check flake8_executable lints
+
 on:
   push:
     branches: ["wsl**"]
   workflow_dispatch:
-      
+
 jobs:
+  find_wsl_cache:
+    name: "Check/Create WSL vhdx"
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      CACHE_FILE: "ubuntu_ruff.vhdx"
+      CACHE_DIR: ".wsl_cache"
+      DISTRO: "Ubuntu-24.04"
+      EXT4_WORKSPACE: "/workspaces/${{ github.repository }}"
+    outputs:
+      cache_key: ${{ steps.calc_vars.outputs.cache_key }}
+      cache_path: ${{ steps.calc_vars.outputs.cache_path }}
+      vhdx_file: ${{ steps.calc_vars.outputs.vhdx_file }}
+      distro: ${{ env.DISTRO }}
+      ext4_workspace: ${{ env.EXT4_WORKSPACE }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: calc_vars
+        name: "Calculate paths & key"
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $cachePath = Join-Path ${{ runner.temp }} $env:CACHE_DIR
+          Write-Output "cache_path=$cachePath"
+          Write-Output "cache_path=$cachePath" >> $env:GITHUB_OUTPUT
+          $vhdxPath = Join-Path $cachePath $env:CACHE_FILE
+          Write-Output "vhdx_file=$vhdxPath"
+          Write-Output "vhdx_file=$vhdxPath" >> $env:GITHUB_OUTPUT
+          $workflowHash = (Get-FileHash .github/actions/cache-wsl-distro/action.yml).Hash
+          Write-Output "cache_key=wsl_distro_cache-$workflowHash"
+          Write-Output "cache_key=wsl_distro_cache-$workflowHash" >> $env:GITHUB_OUTPUT
+      - id: check-wsl-cache
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ steps.calc_vars.outputs.cache_key }}
+          path: ${{ steps.calc_vars.outputs.cache_path}}
+          lookup-only: true
+      - name: "Create and cache distro"
+        if: ${{ steps.check-wsl-cache.outputs.cache-hit != 'true'}}
+        uses: ./.github/actions/cache-wsl-distro
+        with:
+          cache_key: ${{ steps.calc_vars.outputs.cache_key }}
+          cache_path: ${{ steps.calc_vars.outputs.cache_path }}
+          vhdx_file: ${{ steps.calc_vars.outputs.vhdx_file }}
+          distro: ${{ env.DISTRO }}
+          ext4_workspace: ${{ env.EXT4_WORKSPACE }}
+  
+  test_wsl_ntfs:
+    needs:
+      find_wsl_cache
+    name: "Run tests on WSL - mounted NTFS filesystem"
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: wsl-bash {0}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: "Get wsl distro from cache"
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ needs.find_wsl_cache.outputs.cache_key }}
+          path: ${{ needs.find_wsl_cache.outputs.cache_path }}
+          fail-on-cache-miss: true
+      - id: build_cache
+        name: Restore rust build cache (if available)
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ github.job }}-cargo
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+      - name: "Import cached Distro"
+        shell: pwsh
+        env:
+          VHDX_FILE: ${{ needs.find_wsl_cache.outputs.vhdx_file }}
+          DISTRO: ${{ needs.find_wsl_cache.outputs.distro }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Write-Output "Updating WSL"
+          wsl --update
+          Write-Output "Importing $env:VHDX_FILE as $env:DISTRO"
+          wsl --import-in-place $env:DISTRO $env:VHDX_FILE
+      - name: "Setup WSL"
+        uses: Vampire/setup-wsl@v5
+        with:
+          distribution: ${{ needs.find_wsl_cache.outputs.distro }}
+          use-cache: 'false'
+      - name: "Who am I"
+        run: |
+          id
+          uname -a
+      - name: "Working Directory"
+        run: |
+          pwd
+          ls -al
+      - name: "Filesystems"
+        run: |
+          df -T
+      - name: "Run tests"
+        env:
+          NEXTEST_PROFILE: "ci-short"
+        run: |
+          source $HOME/.cargo/env
+          cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
+      - name: "Save build cache"
+        if: ${{ !cancelled() }}
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ steps.build_cache.outputs.cache-primary-key }}
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+
+  test_wsl_ext4:
+    needs:
+      find_wsl_cache
+    name: "Run tests on WSL Native filesystem"
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: wsl-bash {0}
+    env:
+        WORKSPACEDIR: ${{ needs.find_wsl_cache.outputs.ext4_workspace }}
+    steps:
+      - name: "Get wsl distro from cache"
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ needs.find_wsl_cache.outputs.cache_key }}
+          path: ${{ needs.find_wsl_cache.outputs.cache_path }}
+          fail-on-cache-miss: true
+      - name: "Import cached Distro"
+        shell: pwsh
+        env:
+          VHDX_FILE: ${{ needs.find_wsl_cache.outputs.vhdx_file }}
+          DISTRO: ${{ needs.find_wsl_cache.outputs.distro }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Write-Output "Updating WSL"
+          wsl --update
+          Write-Output "Importing $env:VHDX_FILE as $env:DISTRO"
+          wsl --import-in-place $env:DISTRO $env:VHDX_FILE
+      - name: "Setup WSL"
+        uses: Vampire/setup-wsl@v5
+        with:
+          distribution: ${{ needs.find_wsl_cache.outputs.distro }}
+          use-cache: 'false'
+      - name: "Who am I"
+        run: |
+          id
+          uname -a
+      - name: "Checkout (manually)"
+        # Needs hardening - move ref_name & repository to env var
+        env:
+          BRANCHNAME: ${{ github.ref_name }}
+        run: |
+          cd ${{ env.WORKSPACEDIR }}
+          git config --global --add safe.directory ${{ env.WORKSPACEDIR }}
+          git init ${{ env.WORKSPACEDIR }}
+          git remote add origin https://github.com/${{ github.repository }}
+          git config --local gc.auto 0
+          git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +${{ github.sha }}:refs/remotes/origin/${{ env.BRANCHNAME }}
+          git sparse-checkout disable
+          git config --local --unset-all extensions.worktreeConfig
+          git checkout --progress --force -B ${{ env.BRANCHNAME }} refs/remotes/origin/${{ env.BRANCHNAME }}
+      - name: "Working Directory"
+        run: |
+          cd ${{ env.WORKSPACEDIR }}
+          pwd
+          ls -al
+      - name: "Filesystems"
+        run: |
+          cd ${{ env.WORKSPACEDIR }}
+          df -T
+      - name: "Run tests"
+        env:
+          NEXTEST_PROFILE: "ci-short"
+        run: |
+          cd ${{ env.WORKSPACEDIR }}
+          source $HOME/.cargo/env
+          cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
+
   test_linux:
     runs-on: ubuntu-latest
     timeout-minutes: 20
