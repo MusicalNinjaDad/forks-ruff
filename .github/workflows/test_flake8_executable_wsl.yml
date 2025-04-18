@@ -119,7 +119,10 @@ jobs:
         uses: actions/cache/save@v4
         with:
           key: ${{ steps.build_cache.outputs.cache-primary-key }}
-          path: ${{ github.workspace }}/target
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
 
   test_wsl_ext4:
     needs:
