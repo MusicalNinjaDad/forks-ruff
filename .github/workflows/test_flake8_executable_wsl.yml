@@ -126,7 +126,7 @@ jobs:
     timeout-minutes: 20
     defaults:
       run:
-        shell: wsl --cd env:WORKSPACEDIR bash --noprofile --norc -euo pipefail {0}
+        shell: wsl --cd %WORKSPACEDIR% bash --noprofile --norc -euo pipefail {0}
     env:
         WORKSPACEDIR: ${{ needs.find_wsl_cache.outputs.ext4_workspace }}
     steps:
