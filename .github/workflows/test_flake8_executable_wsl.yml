@@ -76,8 +76,11 @@ jobs:
         name: Restore rust build cache (if available)
         uses: actions/cache/restore@v4
         with:
-          key: ${{ github.job }}-build_cache
-          path: ${{ github.workspace }}/target
+          key: ${{ github.job }}-cargo
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
       - name: "Import cached Distro"
         shell: pwsh
         env:
