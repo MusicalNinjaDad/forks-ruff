@@ -126,7 +126,7 @@ jobs:
     timeout-minutes: 20
     defaults:
       run:
-        shell: wsl-bash {0}
+        shell: wsl --cd env:WORKSPACEDIR bash --noprofile --norc -euo pipefail {0}
     env:
         WORKSPACEDIR: ${{ needs.find_wsl_cache.outputs.ext4_workspace }}
     steps:
@@ -161,7 +161,6 @@ jobs:
         env:
           BRANCHNAME: ${{ github.ref_name }}
         run: |
-          cd ${{ env.WORKSPACEDIR }}
           git config --global --add safe.directory ${{ env.WORKSPACEDIR }}
           git init ${{ env.WORKSPACEDIR }}
           git remote add origin https://github.com/${{ github.repository }}
@@ -172,18 +171,15 @@ jobs:
           git checkout --progress --force -B ${{ env.BRANCHNAME }} refs/remotes/origin/${{ env.BRANCHNAME }}
       - name: "Working Directory"
         run: |
-          cd ${{ env.WORKSPACEDIR }}
           pwd
           ls -al
       - name: "Filesystems"
         run: |
-          cd ${{ env.WORKSPACEDIR }}
           df -T
       - name: "Run tests"
         env:
           NEXTEST_PROFILE: "ci-short"
         run: |
-          cd ${{ env.WORKSPACEDIR }}
           source $HOME/.cargo/env
           cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
 
