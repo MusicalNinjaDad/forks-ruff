@@ -21,9 +21,6 @@ jobs:
       vhdx_file: ${{ steps.calc_vars.outputs.vhdx_file }}
       distro: ${{ env.DISTRO }}
       ext4_workspace: ${{ env.EXT4_WORKSPACE }}
-    defaults:
-      run:
-        shell: wsl-bash {0}
     steps:
       - uses: actions/checkout@v4
       - id: calc_vars
