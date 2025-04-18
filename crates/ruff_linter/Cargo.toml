@@ -76,6 +76,8 @@ insta = { workspace = true, features = ["filters", "json", "redactions"] }
 test-case = { workspace = true }
 # Disable colored output in tests
 colored = { workspace = true, features = ["no-color"] }
+# Run dedicated tests on WSL
+is-wsl = { workspace = true }
 
 [features]
 default = []
