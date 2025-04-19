@@ -29,7 +29,7 @@ mod tests {
     #[test_case(Path::new("EXE005_1.py"))]
     #[test_case(Path::new("EXE005_2.py"))]
     #[test_case(Path::new("EXE005_3.py"))]
-    #[cfg(not(testing_on_wsl))]
+    #[cfg(not(test_environment="wsl-ntfs"))]
     fn rules(path: &Path) -> Result<()> {
         let snapshot = path.to_string_lossy().into_owned();
         let diagnostics = test_path(
@@ -55,7 +55,7 @@ mod tests {
     #[test_case(Path::new("EXE005_1.py"))]
     #[test_case(Path::new("EXE005_2.py"))]
     #[test_case(Path::new("EXE005_3.py"))]
-    #[cfg(testing_on_wsl)]
+    #[cfg(test_environment="wsl-ntfs")]
     fn rules_wsl(path: &Path) -> Result<()> {
         let snapshot = path.to_string_lossy().into_owned();
         let diagnostics = test_path(

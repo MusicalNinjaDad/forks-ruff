@@ -113,6 +113,7 @@ jobs:
           NEXTEST_PROFILE: "ci-short"
         run: |
           source $HOME/.cargo/env
+          export RUFF_TEST_ENVIRONMENT="wsl-ntfs"
           cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
       - name: "Save build cache"
         if: ${{ !cancelled() }}
@@ -192,7 +193,6 @@ jobs:
           cd ${{ env.WORKSPACEDIR }}
           source $HOME/.cargo/env
           cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
-          RUFF_WSL_FILESYSTEM="ext4" cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
 
   test_linux:
     runs-on: ubuntu-latest
