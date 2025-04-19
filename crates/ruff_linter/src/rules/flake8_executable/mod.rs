@@ -49,6 +49,9 @@ mod tests {
     #[test_case(Path::new("EXE001_1_wsl.py"))]
     #[test_case(Path::new("EXE001_2.py"))]
     #[test_case(Path::new("EXE001_3.py"))]
+    #[test_case(Path::new("EXE002_1_wsl.py"))]
+    #[test_case(Path::new("EXE002_2.py"))]
+    #[test_case(Path::new("EXE002_3.py"))]
     #[test_case(Path::new("EXE003.py"))]
     #[test_case(Path::new("EXE003_uv.py"))]
     #[test_case(Path::new("EXE004_1.py"))]
@@ -65,6 +68,7 @@ mod tests {
             Path::new("flake8_executable").join(path).as_path(),
             &settings::LinterSettings::for_rules(vec![
                 Rule::ShebangNotExecutable,
+                Rule::ShebangMissingExecutableFile,
                 Rule::ShebangLeadingWhitespace,
                 Rule::ShebangNotFirstLine,
                 Rule::ShebangMissingPython,
