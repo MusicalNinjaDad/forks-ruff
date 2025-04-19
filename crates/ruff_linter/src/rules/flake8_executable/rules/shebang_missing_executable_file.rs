@@ -50,16 +50,6 @@ impl Violation for ShebangMissingExecutableFile {
 /// EXE002
 #[cfg(target_family = "unix")]
 pub(crate) fn shebang_missing_executable_file(filepath: &Path) -> Option<Diagnostic> {
-    // WSL supports Windows file systems, which do not have executable bits.
-    // Instead, everything is executable.
-    // Therefore, we skip this rule on WSL, unless RUFF_WSL_FILESYSTEM="ext4"
-    if is_wsl::is_wsl() {
-        match std::env::var("RUFF_WSL_FILESYSTEM") { // TODO: Move this to clap args
-            Ok(val) if val.as_str() == "ext4" => (),
-            _ => return None
-        }
-    }
-    
     if let Ok(true) = is_executable(filepath) {
         return Some(Diagnostic::new(
             ShebangMissingExecutableFile,

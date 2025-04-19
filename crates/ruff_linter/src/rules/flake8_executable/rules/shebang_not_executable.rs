@@ -52,16 +52,6 @@ impl Violation for ShebangNotExecutable {
 /// EXE001
 #[cfg(target_family = "unix")]
 pub(crate) fn shebang_not_executable(filepath: &Path, range: TextRange) -> Option<Diagnostic> {
-    // WSL supports Windows file systems, which do not have executable bits.
-    // Instead, everything is executable.
-    // Therefore, we skip this rule on WSL, unless RUFF_WSL_FILESYSTEM="ext4"
-    if is_wsl::is_wsl() {
-        match std::env::var("RUFF_WSL_FILESYSTEM") { // TODO: Move this to clap args
-            Ok(val) if val.as_str() == "ext4" => (),
-            _ => return None
-        }
-    }
-
     if let Ok(false) = is_executable(filepath) {
         return Some(Diagnostic::new(ShebangNotExecutable, range));
     }

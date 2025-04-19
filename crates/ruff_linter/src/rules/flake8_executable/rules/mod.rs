@@ -26,6 +26,11 @@ pub(crate) fn from_tokens(
     comment_ranges: &CommentRanges,
     settings: &LinterSettings,
 ) {
+    // WSL supports Windows file systems, which do not have executable bits.
+    // Instead, everything is executable.
+    // Therefore, we skip EXE001 & EXE002 on WSL, unless RUFF_WSL_FILESYSTEM="ext4"
+    let wsl_ntfs = is_wsl::is_wsl() && std::env::var("RUFF_WSL_FILESYSTEM")!=Ok("ext4".to_string());
+    
     let mut has_any_shebang = false;
     for range in comment_ranges {
         let comment = locator.slice(range);
@@ -36,7 +41,7 @@ pub(crate) fn from_tokens(
                 diagnostics.push(diagnostic);
             }
 
-            if settings.rules.enabled(Rule::ShebangNotExecutable) {
+            if settings.rules.enabled(Rule::ShebangNotExecutable) && !wsl_ntfs {
                 if let Some(diagnostic) = shebang_not_executable(path, range) {
                     diagnostics.push(diagnostic);
                 }
@@ -53,7 +58,7 @@ pub(crate) fn from_tokens(
     }
 
     if !has_any_shebang {
-        if settings.rules.enabled(Rule::ShebangMissingExecutableFile) {
+        if settings.rules.enabled(Rule::ShebangMissingExecutableFile) && !wsl_ntfs {
             if let Some(diagnostic) = shebang_missing_executable_file(path) {
                 diagnostics.push(diagnostic);
             }
