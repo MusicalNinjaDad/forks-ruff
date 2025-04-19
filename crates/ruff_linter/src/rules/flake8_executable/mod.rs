@@ -46,6 +46,9 @@ mod tests {
         Ok(())
     }
 
+    #[test_case(Path::new("EXE001_1_wsl.py"))]
+    #[test_case(Path::new("EXE001_2.py"))]
+    #[test_case(Path::new("EXE001_3.py"))]
     #[test_case(Path::new("EXE003.py"))]
     #[test_case(Path::new("EXE003_uv.py"))]
     #[test_case(Path::new("EXE004_1.py"))]
@@ -61,6 +64,7 @@ mod tests {
         let diagnostics = test_path(
             Path::new("flake8_executable").join(path).as_path(),
             &settings::LinterSettings::for_rules(vec![
+                Rule::ShebangNotExecutable,
                 Rule::ShebangLeadingWhitespace,
                 Rule::ShebangNotFirstLine,
                 Rule::ShebangMissingPython,
