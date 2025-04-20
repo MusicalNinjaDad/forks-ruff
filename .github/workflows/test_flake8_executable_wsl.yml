@@ -9,7 +9,7 @@ jobs:
   find_wsl_cache:
     name: "Check/Create WSL vhdx"
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     env:
       CACHE_FILE: "ubuntu_ruff.vhdx"
       CACHE_DIR: ".wsl_cache"
@@ -58,7 +58,7 @@ jobs:
       find_wsl_cache
     name: "Run tests on WSL - mounted NTFS filesystem"
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     defaults:
       run:
         shell: wsl-bash {0}
@@ -139,7 +139,7 @@ jobs:
       find_wsl_cache
     name: "Run tests on WSL Native filesystem"
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     defaults:
       run:
         shell: wsl-bash {0}
@@ -216,7 +216,7 @@ jobs:
 
   test_linux:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
