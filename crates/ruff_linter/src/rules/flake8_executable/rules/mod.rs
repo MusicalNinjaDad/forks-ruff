@@ -29,34 +29,32 @@ pub(crate) fn from_tokens(
     comment_ranges: &CommentRanges,
     settings: &LinterSettings,
 ) {
-    // WSL supports Windows file systems, which do not have executable bits.
-    // Instead, everything is executable.
+    // WSL supports Windows file systems, which do not have executable bits. Instead, everything is executable.
     // Therefore, we skip EXE001 & EXE002 on WSL if we detect this situation.
+    //
+    // To avoid unnecessary performance penalties, and offer a workaround for #12941, the user can
+    // identify the filesystem by setting the environment variable `RUFF_WSL_FILESYSTEM`
     let wsl_ntfs = 
         match std::env::var("RUFF_WSL_FILESYSTEM") {
             
-            // If the user has specifically identified the file system, we trust them and move on (for speed)
             Ok(value) => value == *"ntfs",
             
-            _ => {
-                // Only run these checks on WSL - to avoid unnecessary performance penalties.
-                // Setting `RUFF_WSL_FILESYSTEM` provides a workaround for #12941
+            Err(_) => {
+                // Only run these checks on WSL - users mounting FAT, NTFS, CIFS etc. in other cases (#12941) must set `RUFF_WSL_FILESYSTEM`.
                 if is_wsl::is_wsl() {
-                    // Create a tempfile in the project root
-                    let tmp_file_result = NamedTempFile::new_in(settings.project_root.as_path());
-                    match tmp_file_result {
-                        Ok(tmp_file) => 
-                            match is_executable(tmp_file.path()) {
-                                Ok(executable) if !executable => {
-                                    warn_user_once!("EXE001/EXE002 incur a small performance hit on WSL unless RUFF_WSL_FILESYSTEM is set - see the docs for more information.");
-                                    false
-                                },
-                                _ => {
-                                    warn_user_once!("EXE001/EXE002 is not available on WSL when a windows filesystem is mounted - see the docs for more information.");
-                                    true
-                                }
-                            },
-                        Err(_) => true
+                    // Create a tempfile in the project root and see whether it is executable by default.
+                    // If we run into some kind of error with the tempfile, we'll assume people are following MS recommendation and using the WSL native filesystem
+                    match NamedTempFile::new_in(settings.project_root.as_path()).map_err(std::convert::Into::into) 
+                        .and_then(|tmpfile| is_executable(tmpfile.path()))
+                    {
+                        Ok(executable) if executable => {
+                            warn_user_once!("EXE001/EXE002 is not available on WSL when a windows filesystem is mounted - see the docs for more information.");
+                            true
+                        }
+                        _ => {
+                            warn_user_once!("EXE001/EXE002 incur a small performance hit on WSL unless RUFF_WSL_FILESYSTEM is set - see the docs for more information.");
+                            false
+                        }
                     }
                 }
                 else {false}
