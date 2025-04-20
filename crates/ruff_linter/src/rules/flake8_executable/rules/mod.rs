@@ -11,7 +11,7 @@ pub(crate) use shebang_not_first_line::*;
 use crate::codes::Rule;
 use crate::comments::shebang::ShebangDirective;
 use crate::settings::LinterSettings;
-use crate::Locator;
+use crate::{warn_user_once, Locator};
 
 mod shebang_leading_whitespace;
 mod shebang_missing_executable_file;
@@ -31,6 +31,8 @@ pub(crate) fn from_tokens(
     // Therefore, we skip EXE001 & EXE002 on WSL, unless RUFF_WSL_FILESYSTEM="ext4"
     let wsl_ntfs = is_wsl::is_wsl() && std::env::var("RUFF_WSL_FILESYSTEM")!=Ok("ext4".to_string());
     
+    warn_user_once!("EXE on WSL Warning");
+
     let mut has_any_shebang = false;
     for range in comment_ranges {
         let comment = locator.slice(range);

@@ -8,6 +8,7 @@ mod tests {
     use std::path::Path;
 
     use anyhow::Result;
+    use log::Level;
     use test_case::test_case;
 
     use crate::registry::Rule;
@@ -43,6 +44,25 @@ mod tests {
             ]),
         )?;
         assert_messages!(snapshot, diagnostics);
+        Ok(())
+    }
+
+    #[test_case(Path::new("EXE001_1.py"))]
+    #[test_case(Path::new("EXE002_1.py"))]
+    fn warnings(path: &Path) -> Result<()> {
+        testing_logger::setup();
+        test_path(
+            Path::new("flake8_executable").join(path).as_path(),
+            &settings::LinterSettings::for_rules(vec![
+                Rule::ShebangNotExecutable,
+                Rule::ShebangMissingExecutableFile
+            ]),
+        )?;
+        testing_logger::validate( |captured_logs| {
+            assert_eq!(captured_logs.len(), 1);
+            assert_eq!(captured_logs[0].body, "EXE on WSL Warning");
+            assert_eq!(captured_logs[0].level, Level::Warn);
+        });
         Ok(())
     }
 
