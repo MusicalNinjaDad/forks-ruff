@@ -36,7 +36,7 @@ fn wsl_ntfs_check(project_root: &Path) -> bool {
 
     // TODO (MusicalNinjaDad): Move this from a direct check here to a command-line option with env default (in ruff/args.rs)
     *wsl_ntfs.get_or_init(|| match std::env::var("RUFF_WSL_FILESYSTEM") {
-        Ok(value) => value == *"ntfs",
+        Ok(value) => value.to_lowercase() == *"ntfs",
         
         Err(_) => {
             // Only run these checks on WSL - other users mounting FAT, NTFS, CIFS etc. (#12941) must set `RUFF_WSL_FILESYSTEM`.
