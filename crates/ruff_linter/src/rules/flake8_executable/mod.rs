@@ -96,6 +96,32 @@ mod tests {
         Ok(())
     }
 
+    #[test_case(Path::new("EXE001_1.py"))]
+    #[test_case(Path::new("EXE002_1.py"))]
+    #[cfg(
+        all(
+            test_environment="wsl", // AND
+            not(test_environment="ntfs"), // AND
+            not(test_environment="ruff_wsl_filesystem_is_set")
+        )
+    )]
+    fn warnings(path: &Path) -> Result<()> {
+        testing_logger::setup();
+        test_path(
+            Path::new("flake8_executable").join(path).as_path(),
+            &settings::LinterSettings::for_rules(vec![
+                Rule::ShebangNotExecutable,
+                Rule::ShebangMissingExecutableFile
+            ]),
+        )?;
+        testing_logger::validate( |captured_logs| {
+            assert_eq!(captured_logs.len(), 1);
+            assert_eq!(captured_logs[0].body, "EXE001/EXE002 incur a small performance hit on WSL unless RUFF_WSL_FILESYSTEM is set - see the docs for more information.");
+            assert_eq!(captured_logs[0].level, Level::Warn);
+        });
+        Ok(())
+    }
+
     #[test_case(Path::new("EXE001_1_wsl.py"))]
     #[test_case(Path::new("EXE001_2.py"))]
     #[test_case(Path::new("EXE001_3.py"))]
