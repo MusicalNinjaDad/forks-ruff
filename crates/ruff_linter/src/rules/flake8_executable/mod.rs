@@ -29,7 +29,7 @@ mod tests {
     #[test_case(Path::new("EXE005_1.py"))]
     #[test_case(Path::new("EXE005_2.py"))]
     #[test_case(Path::new("EXE005_3.py"))]
-    #[cfg(not(test_environment="ntfs"))]
+    #[cfg(not(test_environment = "ntfs"))]
     fn rules(path: &Path) -> Result<()> {
         let snapshot = path.to_string_lossy().into_owned();
         let diagnostics = test_path(
@@ -60,10 +60,10 @@ mod tests {
             Path::new("flake8_executable").join(path).as_path(),
             &settings::LinterSettings::for_rules(vec![
                 Rule::ShebangNotExecutable,
-                Rule::ShebangMissingExecutableFile
+                Rule::ShebangMissingExecutableFile,
             ]),
         )?;
-        testing_logger::validate( |captured_logs| {
+        testing_logger::validate(|captured_logs| {
             assert_eq!(captured_logs.len(), 0);
         });
         Ok(())
@@ -83,10 +83,10 @@ mod tests {
             Path::new("flake8_executable").join(path).as_path(),
             &settings::LinterSettings::for_rules(vec![
                 Rule::ShebangNotExecutable,
-                Rule::ShebangMissingExecutableFile
+                Rule::ShebangMissingExecutableFile,
             ]),
         )?;
-        testing_logger::validate( |captured_logs| {
+        testing_logger::validate(|captured_logs| {
             assert_eq!(captured_logs.len(), 1);
             assert_eq!(captured_logs[0].body, "EXE001/EXE002 is not available on WSL when a windows filesystem is mounted - see the docs for more information.");
             assert_eq!(captured_logs[0].level, log::Level::Warn);
@@ -109,10 +109,10 @@ mod tests {
             Path::new("flake8_executable").join(path).as_path(),
             &settings::LinterSettings::for_rules(vec![
                 Rule::ShebangNotExecutable,
-                Rule::ShebangMissingExecutableFile
+                Rule::ShebangMissingExecutableFile,
             ]),
         )?;
-        testing_logger::validate( |captured_logs| {
+        testing_logger::validate(|captured_logs| {
             assert_eq!(captured_logs.len(), 1);
             assert_eq!(captured_logs[0].body, "EXE001/EXE002 incur a small performance hit on WSL unless RUFF_WSL_FILESYSTEM is set - see the docs for more information.");
             assert_eq!(captured_logs[0].level, log::Level::Warn);
@@ -135,7 +135,7 @@ mod tests {
     #[test_case(Path::new("EXE005_1.py"))]
     #[test_case(Path::new("EXE005_2.py"))]
     #[test_case(Path::new("EXE005_3.py"))]
-    #[cfg(test_environment="ntfs")]
+    #[cfg(test_environment = "ntfs")]
     fn rules_ntfs(path: &Path) -> Result<()> {
         let snapshot = path.to_string_lossy().into_owned();
         let diagnostics = test_path(

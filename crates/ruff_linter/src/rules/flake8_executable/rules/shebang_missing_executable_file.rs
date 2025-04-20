@@ -31,15 +31,15 @@ use crate::rules::flake8_executable::helpers::is_executable;
 /// (e.g., `chmod -x __main__.py` or `git update-index --chmod=-x __main__.py`).
 ///
 /// ## Filesystem considerations
-/// 
+///
 /// A file is considered executable if it has the executable bit set (i.e., its
 /// permissions mode intersects with `0o111`). As such, _this rule is only
 /// available on Unix-like systems_, and is not enforced on Windows.
-/// 
+///
 /// If you are working on a Unix-like system, using a filesystem which does not support
 /// Unix-like permissions (e.g. on WSL or mounting an FAT/NTFS/CIFS partition), then you
 /// can use the environment variable `RUFF_WSL_FILESYSTEM` to ensure correct functionality.
-/// 
+///
 /// - Setting this to "ntfs" will disable EXE001 & EXE002
 /// - Setting to any other value will enable EXE001 & EXE002
 /// - Leaving unset will force a check of default permissions *on WSL*, which incurs a slight
