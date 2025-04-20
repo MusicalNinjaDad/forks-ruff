@@ -50,7 +50,10 @@ mod tests {
 
     #[test_case(Path::new("EXE001_1.py"))]
     #[test_case(Path::new("EXE002_1.py"))]
-    #[cfg(not(test_environment="ntfs"))]
+    #[cfg(any(
+        not(test_environment="wsl"),
+        test_environment="ruff_wsl_filesystem_is_set"
+    ))]
     fn warnings(path: &Path) -> Result<()> {
         testing_logger::setup();
         test_path(

@@ -28,8 +28,12 @@ pub(crate) fn from_tokens(
 ) {
     // WSL supports Windows file systems, which do not have executable bits.
     // Instead, everything is executable.
-    // Therefore, we skip EXE001 & EXE002 on WSL, unless RUFF_WSL_FILESYSTEM="ext4"
-    let wsl_ntfs = is_wsl::is_wsl() && std::env::var("RUFF_WSL_FILESYSTEM")!=Ok("ext4".to_string());
+    // Therefore, we skip EXE001 & EXE002 on WSL, unless RUFF_WSL_FILESYSTEM is set to something other than "ntfs"
+    let wsl_ntfs = 
+        match std::env::var("RUFF_WSL_FILESYSTEM") {
+            Ok(value) => value == *"ntfs",
+            _ => is_wsl::is_wsl()
+        };
     
     if wsl_ntfs {warn_user_once!("EXE001/EXE002 is not available on WSL when a windows filesystem is mounted - see the docs for more information.");}
 

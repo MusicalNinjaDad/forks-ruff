@@ -192,7 +192,7 @@ jobs:
         run: |
           cd ${{ env.WORKSPACEDIR }}
           source $HOME/.cargo/env
-          export RUFF_TEST_ENVIRONMENT="wsl:ruff_wsl_filesystem_is_set"
+          export RUFF_TEST_ENVIRONMENT="wsl:ext4:ruff_wsl_filesystem_is_set"
           export RUFF_WSL_FILESYSTEM="ext4"
           cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
 
