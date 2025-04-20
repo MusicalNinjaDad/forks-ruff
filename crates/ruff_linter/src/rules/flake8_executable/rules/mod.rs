@@ -31,7 +31,7 @@ pub(crate) fn from_tokens(
     // Therefore, we skip EXE001 & EXE002 on WSL, unless RUFF_WSL_FILESYSTEM="ext4"
     let wsl_ntfs = is_wsl::is_wsl() && std::env::var("RUFF_WSL_FILESYSTEM")!=Ok("ext4".to_string());
     
-    warn_user_once!("EXE on WSL Warning");
+    if wsl_ntfs {warn_user_once!("EXE001/EXE002 is not available on WSL when a windows filesystem is mounted - see the docs for more information.");}
 
     let mut has_any_shebang = false;
     for range in comment_ranges {

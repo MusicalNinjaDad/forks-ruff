@@ -8,6 +8,7 @@ mod tests {
     use std::path::Path;
 
     use anyhow::Result;
+    #[cfg(test_environment="ntfs")]
     use log::Level;
     use test_case::test_case;
 
@@ -49,6 +50,25 @@ mod tests {
 
     #[test_case(Path::new("EXE001_1.py"))]
     #[test_case(Path::new("EXE002_1.py"))]
+    #[cfg(not(test_environment="ntfs"))]
+    fn warnings(path: &Path) -> Result<()> {
+        testing_logger::setup();
+        test_path(
+            Path::new("flake8_executable").join(path).as_path(),
+            &settings::LinterSettings::for_rules(vec![
+                Rule::ShebangNotExecutable,
+                Rule::ShebangMissingExecutableFile
+            ]),
+        )?;
+        testing_logger::validate( |captured_logs| {
+            assert_eq!(captured_logs.len(), 0);
+        });
+        Ok(())
+    }
+
+    #[test_case(Path::new("EXE001_1.py"))]
+    #[test_case(Path::new("EXE002_1.py"))]
+    #[cfg(test_environment="ntfs")]
     fn warnings(path: &Path) -> Result<()> {
         testing_logger::setup();
         test_path(
@@ -60,7 +80,7 @@ mod tests {
         )?;
         testing_logger::validate( |captured_logs| {
             assert_eq!(captured_logs.len(), 1);
-            assert_eq!(captured_logs[0].body, "EXE on WSL Warning");
+            assert_eq!(captured_logs[0].body, "EXE001/EXE002 is not available on WSL when a windows filesystem is mounted - see the docs for more information.");
             assert_eq!(captured_logs[0].level, Level::Warn);
         });
         Ok(())
