@@ -79,7 +79,7 @@ mod tests {
             not(test_environment="ruff_wsl_filesystem_is_set")
         )
     )]
-    fn warnings(path: &Path) -> Result<()> {
+    fn warnings_ntfs(path: &Path) -> Result<()> {
         testing_logger::setup();
         test_path(
             Path::new("flake8_executable").join(path).as_path(),
@@ -105,7 +105,7 @@ mod tests {
             not(test_environment="ruff_wsl_filesystem_is_set")
         )
     )]
-    fn warnings(path: &Path) -> Result<()> {
+    fn warnings_wsl_ext4_detected(path: &Path) -> Result<()> {
         testing_logger::setup();
         test_path(
             Path::new("flake8_executable").join(path).as_path(),
@@ -138,7 +138,7 @@ mod tests {
     #[test_case(Path::new("EXE005_2.py"))]
     #[test_case(Path::new("EXE005_3.py"))]
     #[cfg(test_environment="ntfs")]
-    fn rules_wsl(path: &Path) -> Result<()> {
+    fn rules_ntfs(path: &Path) -> Result<()> {
         let snapshot = path.to_string_lossy().into_owned();
         let diagnostics = test_path(
             Path::new("flake8_executable").join(path).as_path(),
