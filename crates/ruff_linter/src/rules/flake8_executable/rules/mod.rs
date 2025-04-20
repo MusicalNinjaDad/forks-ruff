@@ -31,7 +31,7 @@ mod shebang_not_first_line;
 // identify the filesystem by setting the environment variable `RUFF_WSL_FILESYSTEM`
 fn wsl_ntfs_check(project_root: &Path) -> bool {
 
-    // ?? Is a OnceCell OK here - or do we need a thread-safe alternative ??
+    // ?? Is a OnceCell OK here - or do we need a thread-safe static alternative ??
     let wsl_ntfs: OnceCell<bool> = OnceCell::new();
 
     // TODO (MusicalNinjaDad): Move this from a direct check here to a command-line option with env default (in ruff/args.rs)

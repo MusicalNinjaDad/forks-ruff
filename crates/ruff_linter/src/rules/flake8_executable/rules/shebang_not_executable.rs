@@ -27,9 +27,21 @@ use crate::rules::flake8_executable::helpers::is_executable;
 ///
 /// Otherwise, remove the shebang.
 ///
+/// ## Filesystem considerations
+/// 
 /// A file is considered executable if it has the executable bit set (i.e., its
 /// permissions mode intersects with `0o111`). As such, _this rule is only
-/// available on Unix-like systems_, and is not enforced on Windows or WSL.
+/// available on Unix-like systems_, and is not enforced on Windows.
+/// 
+/// If you are working on a Unix-like system, using a filesystem which does not support
+/// Unix-like permissions (e.g. on WSL or mounting an FAT/NTFS/CIFS partition), then you
+/// can use the environment variable `RUFF_WSL_FILESYSTEM` to ensure correct functionality.
+/// 
+/// - Setting this to "ntfs" will disable EXE001 & EXE002
+/// - Setting to any other value will enable EXE001 & EXE002
+/// - Leaving unset will force a check of default permissions *on WSL*, which incurs a slight
+///   performance penalty
+/// - On non-WSL Unix-like systems we assume a Unix-filesystem unless the variable is set.
 ///
 /// ## Example
 /// ```python
@@ -39,6 +51,7 @@ use crate::rules::flake8_executable::helpers::is_executable;
 /// ## References
 /// - [Python documentation: Executable Python Scripts](https://docs.python.org/3/tutorial/appendix.html#executable-python-scripts)
 /// - [Git documentation: `git update-index --chmod`](https://git-scm.com/docs/git-update-index#Documentation/git-update-index.txt---chmod-x)
+/// - [WSL documentation: Working across filesystems](https://learn.microsoft.com/en-us/windows/wsl/filesystems)
 #[derive(ViolationMetadata)]
 pub(crate) struct ShebangNotExecutable;
 
