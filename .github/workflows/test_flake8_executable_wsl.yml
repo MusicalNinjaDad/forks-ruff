@@ -72,15 +72,6 @@ jobs:
           key: ${{ needs.find_wsl_cache.outputs.cache_key }}
           path: ${{ needs.find_wsl_cache.outputs.cache_path }}
           fail-on-cache-miss: true
-      - id: build_cache
-        name: Restore rust build cache (if available)
-        uses: actions/cache/restore@v4
-        with:
-          key: ${{ github.job }}-cargo
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
       - name: "Import cached Distro"
         shell: pwsh
         env:
@@ -108,6 +99,12 @@ jobs:
       - name: "Filesystems"
         run: |
           df -T
+      - name: "Use wsl-native file system for ./target"
+        # Using the wsl-native filesystem is so much faster
+        run: |
+          mkdir /tmp/target
+          mkdir target || true
+          mount --bind /tmp/target target
       - name: "Run tests: RUFF_WSL_FILESYSTEM set to ntfs"
         env:
           NEXTEST_PROFILE: "ci-short"
@@ -123,16 +120,6 @@ jobs:
           source $HOME/.cargo/env
           export RUFF_TEST_ENVIRONMENT="wsl:ntfs"
           cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
-
-      - name: "Save build cache"
-        if: ${{ !cancelled() }}
-        uses: actions/cache/save@v4
-        with:
-          key: ${{ steps.build_cache.outputs.cache-primary-key }}
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
 
   test_wsl_ext4:
     needs:
