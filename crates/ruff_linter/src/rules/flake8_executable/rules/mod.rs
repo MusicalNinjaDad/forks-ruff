@@ -32,10 +32,14 @@ pub(crate) fn from_tokens(
     let wsl_ntfs = 
         match std::env::var("RUFF_WSL_FILESYSTEM") {
             Ok(value) => value == *"ntfs",
-            _ => is_wsl::is_wsl()
+            _ => {
+                if is_wsl::is_wsl() {
+                    warn_user_once!("EXE001/EXE002 is not available on WSL when a windows filesystem is mounted - see the docs for more information.");
+                    true
+                }
+                else {false}
+            }
         };
-    
-    if wsl_ntfs {warn_user_once!("EXE001/EXE002 is not available on WSL when a windows filesystem is mounted - see the docs for more information.");}
 
     let mut has_any_shebang = false;
     for range in comment_ranges {
