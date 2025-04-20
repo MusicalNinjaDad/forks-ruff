@@ -54,7 +54,7 @@ mod tests {
             test_environment="ruff_wsl_filesystem_is_set"
         )
     )]
-    fn warnings(path: &Path) -> Result<()> {
+    fn no_warnings(path: &Path) -> Result<()> {
         testing_logger::setup();
         test_path(
             Path::new("flake8_executable").join(path).as_path(),
