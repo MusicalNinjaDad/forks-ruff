@@ -8,8 +8,6 @@ mod tests {
     use std::path::Path;
 
     use anyhow::Result;
-    #[cfg(test_environment="ntfs")]
-    use log::Level;
     use test_case::test_case;
 
     use crate::registry::Rule;
@@ -91,7 +89,7 @@ mod tests {
         testing_logger::validate( |captured_logs| {
             assert_eq!(captured_logs.len(), 1);
             assert_eq!(captured_logs[0].body, "EXE001/EXE002 is not available on WSL when a windows filesystem is mounted - see the docs for more information.");
-            assert_eq!(captured_logs[0].level, Level::Warn);
+            assert_eq!(captured_logs[0].level, log::Level::Warn);
         });
         Ok(())
     }
@@ -117,7 +115,7 @@ mod tests {
         testing_logger::validate( |captured_logs| {
             assert_eq!(captured_logs.len(), 1);
             assert_eq!(captured_logs[0].body, "EXE001/EXE002 incur a small performance hit on WSL unless RUFF_WSL_FILESYSTEM is set - see the docs for more information.");
-            assert_eq!(captured_logs[0].level, Level::Warn);
+            assert_eq!(captured_logs[0].level, log::Level::Warn);
         });
         Ok(())
     }
