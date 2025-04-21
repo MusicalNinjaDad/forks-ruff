@@ -8,7 +8,7 @@ use ruff_diagnostics::{Diagnostic, Violation};
 use ruff_macros::{derive_message_formats, ViolationMetadata};
 
 #[cfg(target_family = "unix")]
-use crate::rules::flake8_executable::helpers::is_executable;
+use crate::rules::flake8_executable::helpers::{executable_by_default, is_executable};
 
 /// ## What it does
 /// Checks for a shebang directive in a file that is not executable.
@@ -32,7 +32,7 @@ use crate::rules::flake8_executable::helpers::is_executable;
 /// A file is considered executable if it has the executable bit set (i.e., its
 /// permissions mode intersects with `0o111`). As such, _this rule is only
 /// available on Unix-like filesystems_.
-/// 
+///
 /// It is not enforced on Windows, nor on Unix-like systems if the _project root_
 /// is located on a _filesystem which does not support Unix-like permissions_
 /// (e.g. mounting an removable drive using FAT or using /mnt/c/ on WSL).
@@ -58,15 +58,27 @@ impl Violation for ShebangNotExecutable {
 
 /// EXE001
 #[cfg(target_family = "unix")]
-pub(crate) fn shebang_not_executable(filepath: &Path, range: TextRange) -> Option<Diagnostic> {
-    if let Ok(false) = is_executable(filepath) {
-        return Some(Diagnostic::new(ShebangNotExecutable, range));
+pub(crate) fn shebang_not_executable(
+    filepath: &Path,
+    range: TextRange,
+    projectroot: &Path,
+) -> Option<Diagnostic> {
+    use crate::rules::flake8_executable::helpers::executable_by_default;
+
+    if !executable_by_default(projectroot) {
+        if let Ok(false) = is_executable(filepath) {
+            return Some(Diagnostic::new(ShebangNotExecutable, range));
+        }
     }
 
     None
 }
 
 #[cfg(not(target_family = "unix"))]
-pub(crate) fn shebang_not_executable(_filepath: &Path, _range: TextRange) -> Option<Diagnostic> {
+pub(crate) fn shebang_not_executable(
+    _filepath: &Path,
+    _range: TextRange,
+    _projectroot: &Path,
+) -> Option<Diagnostic> {
     None
 }

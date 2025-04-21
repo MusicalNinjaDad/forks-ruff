@@ -1,7 +1,4 @@
 use std::path::Path;
-use std::sync::OnceLock;
-
-use tempfile::NamedTempFile;
 
 use ruff_diagnostics::Diagnostic;
 use ruff_python_trivia::CommentRanges;
@@ -13,7 +10,6 @@ pub(crate) use shebang_not_first_line::*;
 
 use crate::codes::Rule;
 use crate::comments::shebang::ShebangDirective;
-use crate::rules::flake8_executable::helpers::is_executable;
 use crate::settings::LinterSettings;
 use crate::Locator;
 
@@ -22,22 +18,6 @@ mod shebang_missing_executable_file;
 mod shebang_missing_python;
 mod shebang_not_executable;
 mod shebang_not_first_line;
-
-// Some file systems do not support executable bits. Instead, everything is executable.
-// See #3110, #5445, #10084, #12941
-//
-// Benchmarking shows no noticable difference in performance if we run this check on
-// all systems, as long as we use a `OnceLock`.
-static EXECUTABLE_BY_DEFAULT: OnceLock<bool> = OnceLock::new();
-
-fn executable_by_default(settings: &LinterSettings) -> bool {
-    *EXECUTABLE_BY_DEFAULT.get_or_init(|| {
-        NamedTempFile::new_in(&settings.project_root)
-            .map_err(std::convert::Into::into)
-            .and_then(|tmpfile| is_executable(tmpfile.path()))
-            .unwrap_or(false) // Assume a normal filesystem in case of read-only, IOError, ...
-    })
-}
 
 pub(crate) fn from_tokens(
     diagnostics: &mut Vec<Diagnostic>,
@@ -56,10 +36,10 @@ pub(crate) fn from_tokens(
                 diagnostics.push(diagnostic);
             }
 
-            if settings.rules.enabled(Rule::ShebangNotExecutable)
-                && !executable_by_default(settings)
-            {
-                if let Some(diagnostic) = shebang_not_executable(path, range) {
+            if settings.rules.enabled(Rule::ShebangNotExecutable) {
+                if let Some(diagnostic) =
+                    shebang_not_executable(path, range, &settings.project_root)
+                {
                     diagnostics.push(diagnostic);
                 }
             }
@@ -75,10 +55,9 @@ pub(crate) fn from_tokens(
     }
 
     if !has_any_shebang {
-        if settings.rules.enabled(Rule::ShebangMissingExecutableFile)
-            && !executable_by_default(settings)
-        {
-            if let Some(diagnostic) = shebang_missing_executable_file(path) {
+        if settings.rules.enabled(Rule::ShebangMissingExecutableFile) {
+            if let Some(diagnostic) = shebang_missing_executable_file(path, &settings.project_root)
+            {
                 diagnostics.push(diagnostic);
             }
         }
