@@ -39,6 +39,7 @@ jobs:
       vhdx_file: ${{ steps.calc_vars.outputs.vhdx_file }}
       distro: ${{ env.DISTRO }}
       ext4_workspace: ${{ env.EXT4_WORKSPACE }}
+      ntfs_workspace: 
     steps:
       - uses: actions/checkout@v4
       - id: calc_vars
@@ -88,6 +89,7 @@ jobs:
           path: ${{ needs.find_wsl_cache.outputs.cache_path }}
           fail-on-cache-miss: true
       - name: "Import cached Distro"
+        id: import-wsl
         shell: pwsh
         env:
           VHDX_FILE: ${{ needs.find_wsl_cache.outputs.vhdx_file }}
@@ -98,11 +100,17 @@ jobs:
           wsl --update
           Write-Output "Importing $env:VHDX_FILE as $env:DISTRO"
           wsl --import-in-place $env:DISTRO $env:VHDX_FILE
+
+          # We use this --cd trick otherwise bash gets confused with the \ path separators
+          $workspacePath = wsl.exe -d $env:DISTRO --cd $env:GITHUB_WORKSPACE -- wslpath -ua .
+          Write-Output "WSL Path to Workspace: $workspacePath"
+          Write-Output "workspace_path=$workspacePath" >> $env:GITHUB_OUTPUT
       # Using the wsl-native filesystem for storing build artifacts reduces build from 10 mins to 3 mins
       - name: "Use wsl-native file system for ./target"
         uses: ubuntu/WSL/.github/actions/wsl-bash@main
         with:
           distro: ${{ needs.find_wsl_cache.outputs.distro }}
+          working-dir: ${{ steps.import-wsl.outputs.workspace_path }}
           exec: |
             mkdir /tmp/target
             mkdir target || true
@@ -111,6 +119,7 @@ jobs:
         uses: ubuntu/WSL/.github/actions/wsl-bash@main
         with:
           distro: ${{ needs.find_wsl_cache.outputs.distro }}
+          working-dir: ${{ steps.import-wsl.outputs.workspace_path }}
           exec: |
             source $HOME/.cargo/env
             export NEXTEST_PROFILE="ci-short"
