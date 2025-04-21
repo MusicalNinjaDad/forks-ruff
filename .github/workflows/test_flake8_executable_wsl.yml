@@ -105,21 +105,12 @@ jobs:
           mkdir /tmp/target
           mkdir target || true
           mount --bind /tmp/target target
-      - name: "Run tests: RUFF_WSL_FILESYSTEM set to ntfs"
+      - name: "Run tests"
         env:
           NEXTEST_PROFILE: "ci-short"
         run: |
           source $HOME/.cargo/env
-          export RUFF_TEST_ENVIRONMENT="wsl:ntfs:ruff_wsl_filesystem_is_set"
-          export RUFF_WSL_FILESYSTEM="ntfs"
-          cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
-      - name: "Run tests: RUFF_WSL_FILESYSTEM not set"
-        env:
-          NEXTEST_PROFILE: "ci-short"
-        run: |
-          source $HOME/.cargo/env
-          export RUFF_TEST_ENVIRONMENT="wsl:ntfs"
-          cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
+          RUFF_TEST_ENVIRONMENT="ntfs" cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
 
   test_wsl_ext4:
     needs:
@@ -182,24 +173,13 @@ jobs:
         run: |
           cd ${{ env.WORKSPACEDIR }}
           df -T
-      - name: "Run tests: RUFF_WSL_FILESYSTEM set to ext4"
+      - name: "Run tests"
         env:
           NEXTEST_PROFILE: "ci-short"
         run: |
           cd ${{ env.WORKSPACEDIR }}
           source $HOME/.cargo/env
-          export RUFF_TEST_ENVIRONMENT="wsl:ext4:ruff_wsl_filesystem_is_set"
-          export RUFF_WSL_FILESYSTEM="ext4"
           cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
-      - name: "Run tests: RUFF_WSL_FILESYSTEM not set"
-        env:
-          NEXTEST_PROFILE: "ci-short"
-        run: |
-          cd ${{ env.WORKSPACEDIR }}
-          source $HOME/.cargo/env
-          export RUFF_TEST_ENVIRONMENT="wsl:ext4"
-          cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
-      
 
   test_linux:
     runs-on: ubuntu-latest
