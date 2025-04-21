@@ -1,0 +1,47 @@
+This corresponds to commit: a8508bf1c21bab17dce95e2deee94dd67dd1a289
+
+vscode ➜ /workspaces/ruff (wsl_shebang) $ cargo bench -p ruff_benchmark --bench flake8_executable -- --baseline=OnlyTestIfNeeded
+   Compiling ruff_linter v0.11.5 (/workspaces/ruff/crates/ruff_linter)
+   Compiling ruff_benchmark v0.0.0 (/workspaces/ruff/crates/ruff_benchmark)
+    Finished `bench` profile [optimized] target(s) in 50.97s
+     Running benches/flake8_executable.rs (target/release/deps/flake8_executable-5472c3a7dcfa8cd1)
+linter/flake8-executable/Executable NO Shebang
+                        time:   [12.969 µs 13.188 µs 13.417 µs]
+                        thrpt:  [18.623 MiB/s 18.946 MiB/s 19.266 MiB/s]
+                 change:
+                        time:   [-3.9487% -1.2454% +1.5310%] (p = 0.39 > 0.05)
+                        thrpt:  [-1.5079% +1.2612% +4.1111%]
+                        No change in performance detected.
+Found 5 outliers among 100 measurements (5.00%)
+  3 (3.00%) high mild
+  2 (2.00%) high severe
+linter/flake8-executable/Executable WITH Shebang
+                        time:   [12.824 µs 13.115 µs 13.436 µs]
+                        thrpt:  [20.229 MiB/s 20.725 MiB/s 21.195 MiB/s]
+                 change:
+                        time:   [-3.9587% -0.6027% +3.6403%] (p = 0.76 > 0.05)
+                        thrpt:  [-3.5124% +0.6064% +4.1218%]
+                        No change in performance detected.
+Found 8 outliers among 100 measurements (8.00%)
+  6 (6.00%) high mild
+  2 (2.00%) high severe
+linter/flake8-executable/NOT Executable NO Shebang
+                        time:   [13.414 µs 13.816 µs 14.317 µs]
+                        thrpt:  [17.519 MiB/s 18.154 MiB/s 18.699 MiB/s]
+                 change:
+                        time:   [-2.4737% +0.9987% +4.7399%] (p = 0.58 > 0.05)
+                        thrpt:  [-4.5254% -0.9888% +2.5364%]
+                        No change in performance detected.
+Found 6 outliers among 100 measurements (6.00%)
+  5 (5.00%) high mild
+  1 (1.00%) high severe
+linter/flake8-executable/NOT Executable WITH Shebang
+                        time:   [13.369 µs 13.556 µs 13.748 µs]
+                        thrpt:  [19.839 MiB/s 20.120 MiB/s 20.402 MiB/s]
+                 change:
+                        time:   [-1.9014% +1.2928% +5.0886%] (p = 0.49 > 0.05)
+                        thrpt:  [-4.8422% -1.2763% +1.9383%]
+                        No change in performance detected.
+Found 5 outliers among 100 measurements (5.00%)
+  3 (3.00%) high mild
+  2 (2.00%) high severe
