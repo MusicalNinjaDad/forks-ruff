@@ -61,10 +61,7 @@ jobs:
       find_wsl_cache
     name: "Run tests on WSL - mounted NTFS filesystem"
     runs-on: windows-latest
-    timeout-minutes: 30
-    defaults:
-      run:
-        shell: wsl-bash {0}
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -86,34 +83,23 @@ jobs:
           wsl --update
           Write-Output "Importing $env:VHDX_FILE as $env:DISTRO"
           wsl --import-in-place $env:DISTRO $env:VHDX_FILE
-      - name: "Setup WSL"
-        uses: Vampire/setup-wsl@v5
-        with:
-          distribution: ${{ needs.find_wsl_cache.outputs.distro }}
-          use-cache: 'false'
-      - name: "Who am I"
-        run: |
-          id
-          uname -a
-      - name: "Working Directory"
-        run: |
-          pwd
-          ls -al
-      - name: "Filesystems"
-        run: |
-          df -T
+      # Using the wsl-native filesystem reduces build from 10 mins to 3 mins
       - name: "Use wsl-native file system for ./target"
-        # Using the wsl-native filesystem is so much faster
-        run: |
-          mkdir /tmp/target
-          mkdir target || true
-          mount --bind /tmp/target target
+        uses: ubuntu/WSL/.github/actions/wsl-bash
+        with:
+          distro: ${{ needs.find_wsl_cache.outputs.distro }}
+          exec: |
+            mkdir /tmp/target
+            mkdir target || true
+            mount --bind /tmp/target target
       - name: "Run tests"
-        env:
-          NEXTEST_PROFILE: "ci-short"
-        run: |
-          source $HOME/.cargo/env
-          RUFF_TEST_ENVIRONMENT="ntfs" cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
+        uses: ubuntu/WSL/.github/actions/wsl-bash
+        with:
+          distro: ${{ needs.find_wsl_cache.outputs.distro }}
+          exec: |
+            source $HOME/.cargo/env
+            export NEXTEST_PROFILE="ci-short"
+            RUFF_TEST_ENVIRONMENT="ntfs" cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
 
   test_wsl_ext4:
     needs:
@@ -121,11 +107,6 @@ jobs:
     name: "Run tests on WSL Native filesystem"
     runs-on: windows-latest
     timeout-minutes: 10
-    defaults:
-      run:
-        shell: wsl-bash {0}
-    env:
-        WORKSPACEDIR: ${{ needs.find_wsl_cache.outputs.ext4_workspace }}
     steps:
       - name: "Get wsl distro from cache"
         uses: actions/cache/restore@v4
@@ -144,45 +125,20 @@ jobs:
           wsl --update
           Write-Output "Importing $env:VHDX_FILE as $env:DISTRO"
           wsl --import-in-place $env:DISTRO $env:VHDX_FILE
-      - name: "Setup WSL"
-        uses: Vampire/setup-wsl@v5
+      - name: Checkout
+        uses: ubuntu/WSL/.github/actions/wsl-checkout
         with:
-          distribution: ${{ needs.find_wsl_cache.outputs.distro }}
-          use-cache: 'false'
-      - name: "Who am I"
-        run: |
-          id
-          uname -a
-      - name: "Checkout (manually)"
-        # Needs hardening - move ref_name & repository to env var
-        env:
-          BRANCHNAME: ${{ github.ref_name }}
-        run: |
-          cd ${{ env.WORKSPACEDIR }}
-          git config --global --add safe.directory ${{ env.WORKSPACEDIR }}
-          git init ${{ env.WORKSPACEDIR }}
-          git remote add origin https://github.com/${{ github.repository }}
-          git config --local gc.auto 0
-          git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +${{ github.sha }}:refs/remotes/origin/${{ env.BRANCHNAME }}
-          git sparse-checkout disable
-          git config --local --unset-all extensions.worktreeConfig
-          git checkout --progress --force -B ${{ env.BRANCHNAME }} refs/remotes/origin/${{ env.BRANCHNAME }}
-      - name: "Working Directory"
-        run: |
-          cd ${{ env.WORKSPACEDIR }}
-          pwd
-          ls -al
-      - name: "Filesystems"
-        run: |
-          cd ${{ env.WORKSPACEDIR }}
-          df -T
+          distro: ${{ needs.find_wsl_cache.outputs.distro }}
+          working-dir: ${{ needs.find_wsl_cache.outputs.ext4_workspace }}
       - name: "Run tests"
-        env:
-          NEXTEST_PROFILE: "ci-short"
-        run: |
-          cd ${{ env.WORKSPACEDIR }}
-          source $HOME/.cargo/env
-          cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
+        uses: ubuntu/WSL/.github/actions/wsl-bash
+        with:
+          distro: ${{ needs.find_wsl_cache.outputs.distro }}
+          working-dir: ${{ needs.find_wsl_cache.outputs.ext4_workspace }}
+          exec: |
+            source $HOME/.cargo/env
+            export NEXTEST_PROFILE="ci-short"
+            cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
 
   test_linux:
     runs-on: ubuntu-latest
