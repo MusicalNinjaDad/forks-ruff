@@ -1,5 +1,5 @@
-use std::cell::OnceCell;
 use std::path::Path;
+use std::sync::OnceLock;
 
 use tempfile::NamedTempFile;
 
@@ -23,17 +23,16 @@ mod shebang_missing_python;
 mod shebang_not_executable;
 mod shebang_not_first_line;
 
+static WSL_NTFS: OnceLock<bool> = OnceLock::new();
+
 // WSL supports Windows file systems, which do not have executable bits. Instead, everything is executable.
 // Therefore, we skip EXE001 & EXE002 on WSL if we detect this situation.
 //
 // To avoid performance penalties, and offer a workaround for #12941, the user can
 // identify the filesystem by setting the environment variable `RUFF_WSL_FILESYSTEM`
 fn wsl_ntfs_check(project_root: &Path) -> bool {
-    // ?? Is a OnceCell OK here - or do we need a thread-safe static alternative ??
-    let wsl_ntfs: OnceCell<bool> = OnceCell::new();
-
     // TODO (MusicalNinjaDad): Move this from a direct check here to a command-line option with env default (in ruff/args.rs)
-    *wsl_ntfs.get_or_init(|| match std::env::var("RUFF_WSL_FILESYSTEM") {
+    *WSL_NTFS.get_or_init(|| match std::env::var("RUFF_WSL_FILESYSTEM") {
         Ok(value) => value.to_lowercase() == *"ntfs",
 
         Err(_) => {
