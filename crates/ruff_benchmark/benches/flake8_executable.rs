@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use ruff_benchmark::{criterion, TestFile};
 
 use criterion::{
@@ -120,6 +122,13 @@ fn benchmark_flake8_executable_rules(criterion: &mut Criterion) {
 
     let settings = LinterSettings {
         rules,
+        project_root: PathBuf::from(file!())
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("resources")
+        .join("flake8_executable"),
         ..LinterSettings::default()
     };
 

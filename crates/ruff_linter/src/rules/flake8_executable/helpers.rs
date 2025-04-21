@@ -7,6 +7,8 @@ use std::sync::OnceLock;
 use anyhow::Result;
 use tempfile::NamedTempFile;
 
+use crate::settings::LinterSettings;
+
 pub(super) fn is_executable(filepath: &Path) -> Result<bool> {
     let metadata = filepath.metadata()?;
     let permissions = metadata.permissions();
@@ -20,9 +22,10 @@ pub(super) fn is_executable(filepath: &Path) -> Result<bool> {
 // all systems, as long as we use a `OnceLock`.
 static EXECUTABLE_BY_DEFAULT: OnceLock<bool> = OnceLock::new();
 
-pub(crate) fn executable_by_default(location: &Path) -> bool {
+pub(crate) fn executable_by_default(settings: &LinterSettings) -> bool {
     *EXECUTABLE_BY_DEFAULT.get_or_init(|| {
-        NamedTempFile::new_in(location)
+        is_executable(&settings.project_root.join("pyproject.toml")).unwrap_or(false) &&
+        NamedTempFile::new_in(&settings.project_root)
             .map_err(std::convert::Into::into)
             .and_then(|tmpfile| is_executable(tmpfile.path()))
             .unwrap_or(false) // Assume a normal filesystem in case of read-only, IOError, ...

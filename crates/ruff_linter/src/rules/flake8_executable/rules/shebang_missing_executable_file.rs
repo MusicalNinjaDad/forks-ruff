@@ -10,6 +10,8 @@ use ruff_macros::{derive_message_formats, ViolationMetadata};
 use crate::registry::AsRule;
 #[cfg(target_family = "unix")]
 use crate::rules::flake8_executable::helpers::{executable_by_default, is_executable};
+#[cfg(target_family = "unix")]
+use crate::settings::LinterSettings;
 
 /// ## What it does
 /// Checks for executable `.py` files that do not have a shebang.
@@ -58,10 +60,11 @@ impl Violation for ShebangMissingExecutableFile {
 #[cfg(target_family = "unix")]
 pub(crate) fn shebang_missing_executable_file(
     filepath: &Path,
-    projectroot: &Path,
+    settings: &LinterSettings,
 ) -> Option<Diagnostic> {
+
     if let Ok(true) = is_executable(filepath) {
-        if !executable_by_default(projectroot) {
+        if !executable_by_default(settings) {
             return Some(Diagnostic::new(
                 ShebangMissingExecutableFile,
                 TextRange::default(),
