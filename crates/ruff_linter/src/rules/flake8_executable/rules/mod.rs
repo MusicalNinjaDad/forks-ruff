@@ -38,7 +38,7 @@ pub(crate) fn from_tokens(
 
             if settings.rules.enabled(Rule::ShebangNotExecutable) {
                 if let Some(diagnostic) =
-                    shebang_not_executable(path, range, &settings.project_root)
+                    shebang_not_executable(path, range)
                 {
                     diagnostics.push(diagnostic);
                 }

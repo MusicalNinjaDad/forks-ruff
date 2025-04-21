@@ -60,8 +60,8 @@ pub(crate) fn shebang_missing_executable_file(
     filepath: &Path,
     projectroot: &Path,
 ) -> Option<Diagnostic> {
-    if !executable_by_default(projectroot) {
-        if let Ok(true) = is_executable(filepath) {
+    if let Ok(true) = is_executable(filepath) {
+        if !executable_by_default(projectroot) {
             return Some(Diagnostic::new(
                 ShebangMissingExecutableFile,
                 TextRange::default(),
