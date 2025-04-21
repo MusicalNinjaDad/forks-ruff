@@ -15,7 +15,7 @@ use crate::codes::Rule;
 use crate::comments::shebang::ShebangDirective;
 use crate::rules::flake8_executable::helpers::is_executable;
 use crate::settings::LinterSettings;
-use crate::{warn_user_once, Locator};
+use crate::Locator;
 
 mod shebang_leading_whitespace;
 mod shebang_missing_executable_file;
@@ -32,30 +32,10 @@ fn wsl_ntfs_check(project_root: &Path) -> bool {
     // ?? Is a OnceCell OK here - or do we need a thread-safe static alternative ??
     let wsl_ntfs: OnceCell<bool> = OnceCell::new();
 
-    // TODO (MusicalNinjaDad): Move this from a direct check here to a command-line option with env default (in ruff/args.rs)
-    *wsl_ntfs.get_or_init(|| match std::env::var("RUFF_WSL_FILESYSTEM") {
-        Ok(value) => value.to_lowercase() == *"ntfs",
-
-        Err(_) => {
-            // Only run these checks on WSL - other users mounting FAT, NTFS, CIFS etc. (#12941) must set `RUFF_WSL_FILESYSTEM`.
-            if is_wsl::is_wsl() {
-                // Create a tempfile in the project root and see whether it is executable by default.
-                // If we run into some kind of error with the tempfile, we'll assume people are following MS recommendation and using the WSL native filesystem
-                match NamedTempFile::new_in(project_root).map_err(std::convert::Into::into)
-                    .and_then(|tmpfile| is_executable(tmpfile.path()))
-                {
-                    Ok(executable) if executable => {
-                        warn_user_once!("EXE001/EXE002 is not available on WSL when a windows filesystem is mounted - see the docs for more information.");
-                        true
-                    }
-                    _ => {
-                        warn_user_once!("EXE001/EXE002 incur a small performance hit on WSL unless RUFF_WSL_FILESYSTEM is set - see the docs for more information.");
-                        false
-                    }
-                }
-            }
-            else {false}
-        }
+    *wsl_ntfs.get_or_init(|| {
+        NamedTempFile::new_in(project_root).map_err(std::convert::Into::into)
+            .and_then(|tmpfile| is_executable(tmpfile.path()))
+            .unwrap_or(false)
     })
 }
 

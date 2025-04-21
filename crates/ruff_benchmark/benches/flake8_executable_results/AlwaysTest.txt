@@ -1,0 +1,44 @@
+vscode ➜ /workspaces/ruff (wsl_shebang) $ cargo bench -p ruff_benchmark --bench flake8_executable -- --baseline=0bc58ac36f766db29fdfd72ba22a5730cd8398ea
+   Compiling ruff_linter v0.11.5 (/workspaces/ruff/crates/ruff_linter)
+   Compiling ruff_benchmark v0.0.0 (/workspaces/ruff/crates/ruff_benchmark)
+    Finished `bench` profile [optimized] target(s) in 57.87s
+     Running benches/flake8_executable.rs (target/release/deps/flake8_executable-5472c3a7dcfa8cd1)
+linter/flake8-executable/Executable NO Shebang
+                        time:   [54.693 µs 55.814 µs 57.104 µs]
+                        thrpt:  [4.3756 MiB/s 4.4767 MiB/s 4.5684 MiB/s]
+                 change:
+                        time:   [+308.27% +322.97% +337.78%] (p = 0.00 < 0.05)
+                        thrpt:  [-77.158% -76.358% -75.506%]
+                        Performance has regressed.
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+linter/flake8-executable/Executable WITH Shebang
+                        time:   [52.151 µs 52.816 µs 53.582 µs]
+                        thrpt:  [5.0725 MiB/s 5.1461 MiB/s 5.2117 MiB/s]
+                 change:
+                        time:   [+269.90% +284.19% +297.91%] (p = 0.00 < 0.05)
+                        thrpt:  [-74.869% -73.971% -72.966%]
+                        Performance has regressed.
+Found 3 outliers among 100 measurements (3.00%)
+  2 (2.00%) high mild
+  1 (1.00%) high severe
+linter/flake8-executable/NOT Executable NO Shebang
+                        time:   [52.591 µs 53.617 µs 54.855 µs]
+                        thrpt:  [4.5723 MiB/s 4.6779 MiB/s 4.7692 MiB/s]
+                 change:
+                        time:   [+308.69% +331.81% +356.49%] (p = 0.00 < 0.05)
+                        thrpt:  [-78.094% -76.842% -75.531%]
+                        Performance has regressed.
+Found 13 outliers among 100 measurements (13.00%)
+  9 (9.00%) high mild
+  4 (4.00%) high severe
+linter/flake8-executable/NOT Executable WITH Shebang
+                        time:   [50.174 µs 51.000 µs 51.806 µs]
+                        thrpt:  [5.2648 MiB/s 5.3481 MiB/s 5.4361 MiB/s]
+                 change:
+                        time:   [+249.39% +261.68% +274.30%] (p = 0.00 < 0.05)
+                        thrpt:  [-73.283% -72.351% -71.379%]
+                        Performance has regressed.
+Found 6 outliers among 100 measurements (6.00%)
+  3 (3.00%) high mild
+  3 (3.00%) high severe
