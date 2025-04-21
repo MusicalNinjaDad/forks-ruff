@@ -2,7 +2,10 @@ name: check flake8_executable lints
 
 on:
   push:
-    branches: ["wsl**"]
+    paths: [
+      ".github/workflows/test_flake8_executable_wsl.yml",
+      "**/flake8_executable/**",
+    ]
   workflow_dispatch:
 
 jobs:
