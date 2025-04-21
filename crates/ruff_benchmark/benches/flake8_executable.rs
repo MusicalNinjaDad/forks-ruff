@@ -134,6 +134,7 @@ fn benchmark_flake8_executable_rules(criterion: &mut Criterion) {
 
     let mut group = criterion.benchmark_group("linter/flake8-executable");
     group.measurement_time(std::time::Duration::from_secs(20));
+    group.sample_size(1000);
     benchmark_linter(group, &settings);
 }
 
