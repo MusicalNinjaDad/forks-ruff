@@ -100,7 +100,7 @@ jobs:
           wsl --import-in-place $env:DISTRO $env:VHDX_FILE
       # Using the wsl-native filesystem for storing build artifacts reduces build from 10 mins to 3 mins
       - name: "Use wsl-native file system for ./target"
-        uses: ubuntu/WSL/.github/actions/wsl-bash
+        uses: ubuntu/WSL/.github/actions/wsl-bash@main
         with:
           distro: ${{ needs.find_wsl_cache.outputs.distro }}
           exec: |
@@ -108,7 +108,7 @@ jobs:
             mkdir target || true
             mount --bind /tmp/target target
       - name: "Run tests"
-        uses: ubuntu/WSL/.github/actions/wsl-bash
+        uses: ubuntu/WSL/.github/actions/wsl-bash@main
         with:
           distro: ${{ needs.find_wsl_cache.outputs.distro }}
           exec: |
@@ -141,12 +141,12 @@ jobs:
           Write-Output "Importing $env:VHDX_FILE as $env:DISTRO"
           wsl --import-in-place $env:DISTRO $env:VHDX_FILE
       - name: Checkout
-        uses: ubuntu/WSL/.github/actions/wsl-checkout
+        uses: ubuntu/WSL/.github/actions/wsl-checkout@main
         with:
           distro: ${{ needs.find_wsl_cache.outputs.distro }}
           working-dir: ${{ needs.find_wsl_cache.outputs.ext4_workspace }}
       - name: "Run tests"
-        uses: ubuntu/WSL/.github/actions/wsl-bash
+        uses: ubuntu/WSL/.github/actions/wsl-bash@main
         with:
           distro: ${{ needs.find_wsl_cache.outputs.distro }}
           working-dir: ${{ needs.find_wsl_cache.outputs.ext4_workspace }}
