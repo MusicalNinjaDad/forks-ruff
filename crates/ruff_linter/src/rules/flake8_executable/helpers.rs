@@ -24,7 +24,7 @@ static EXECUTABLE_BY_DEFAULT: OnceLock<bool> = OnceLock::new();
 
 pub(crate) fn executable_by_default(settings: &LinterSettings) -> bool {
     *EXECUTABLE_BY_DEFAULT.get_or_init(|| {
-        is_executable(&settings.project_root.join("pyproject.toml")).unwrap_or(false) &&
+        is_executable(&settings.project_root.join("pyproject.toml")).unwrap_or(true) &&
         NamedTempFile::new_in(&settings.project_root)
             .map_err(std::convert::Into::into)
             .and_then(|tmpfile| is_executable(tmpfile.path()))
