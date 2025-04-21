@@ -1,0 +1,94 @@
+main @ 13ea4e5d0e2b05a88e3f488e91bd74461ecd974f
+
+cargo bench -p ruff_benchmark --bench flake8_executable -- --save-baseline=main
+   Compiling bitflags v2.9.0
+   Compiling ruff_linter v0.11.5 (/workspaces/ruff/crates/ruff_linter)
+   Compiling ruff_python_ast v0.0.0 (/workspaces/ruff/crates/ruff_python_ast)
+   Compiling ruff_python_stdlib v0.0.0 (/workspaces/ruff/crates/ruff_python_stdlib)
+   Compiling inotify v0.11.0
+   Compiling notify v8.0.0
+   Compiling ruff_python_parser v0.0.0 (/workspaces/ruff/crates/ruff_python_parser)
+   Compiling ruff_python_literal v0.0.0 (/workspaces/ruff/crates/ruff_python_literal)
+   Compiling ruff_db v0.0.0 (/workspaces/ruff/crates/ruff_db)
+   Compiling ruff_python_index v0.0.0 (/workspaces/ruff/crates/ruff_python_index)
+   Compiling ruff_python_semantic v0.0.0 (/workspaces/ruff/crates/ruff_python_semantic)
+   Compiling ruff_python_codegen v0.0.0 (/workspaces/ruff/crates/ruff_python_codegen)
+   Compiling red_knot_python_semantic v0.0.0 (/workspaces/ruff/crates/red_knot_python_semantic)
+   Compiling red_knot_vendored v0.0.0 (/workspaces/ruff/crates/red_knot_vendored)
+   Compiling ruff_python_formatter v0.0.0 (/workspaces/ruff/crates/ruff_python_formatter)
+   Compiling red_knot_ide v0.0.0 (/workspaces/ruff/crates/red_knot_ide)
+   Compiling red_knot_project v0.0.0 (/workspaces/ruff/crates/red_knot_project)
+   Compiling ruff_benchmark v0.0.0 (/workspaces/ruff/crates/ruff_benchmark)
+    Finished `bench` profile [optimized] target(s) in 46.18s
+     Running benches/flake8_executable.rs (target/release/deps/flake8_executable-6b6bbfb4e17c2465)
+linter/flake8-executable/Executable NO Shebang
+                        time:   [9.8736 µs 10.042 µs 10.237 µs]
+                        thrpt:  [24.409 MiB/s 24.881 MiB/s 25.306 MiB/s]
+Found 7 outliers among 100 measurements (7.00%)
+  7 (7.00%) high mild
+linter/flake8-executable/Executable WITH Shebang
+                        time:   [10.510 µs 10.972 µs 11.514 µs]
+                        thrpt:  [23.606 MiB/s 24.771 MiB/s 25.860 MiB/s]
+Found 5 outliers among 100 measurements (5.00%)
+  2 (2.00%) high mild
+  3 (3.00%) high severe
+linter/flake8-executable/NOT Executable NO Shebang
+                        time:   [9.2592 µs 9.3481 µs 9.4453 µs]
+                        thrpt:  [26.555 MiB/s 26.831 MiB/s 27.088 MiB/s]
+Found 8 outliers among 100 measurements (8.00%)
+  3 (3.00%) high mild
+  5 (5.00%) high severe
+linter/flake8-executable/NOT Executable WITH Shebang
+                        time:   [9.3705 µs 9.5120 µs 9.6866 µs]
+                        thrpt:  [28.157 MiB/s 28.674 MiB/s 29.107 MiB/s]
+Found 10 outliers among 100 measurements (10.00%)
+  5 (5.00%) high mild
+  5 (5.00%) high severe
+
+comparing 2bf59aac1ac6197de45dfef44209fc227edfa453
+
+cargo bench -p ruff_benchmark --bench flake8_executable -- --baseline=main
+   Compiling ruff_linter v0.11.5 (/workspaces/ruff/crates/ruff_linter)
+   Compiling ruff_benchmark v0.0.0 (/workspaces/ruff/crates/ruff_benchmark)
+    Finished `bench` profile [optimized] target(s) in 40.73s
+     Running benches/flake8_executable.rs (target/release/deps/flake8_executable-06a3575d2cd1f0b1)
+linter/flake8-executable/Executable NO Shebang
+                        time:   [9.2685 µs 9.4022 µs 9.5541 µs]
+                        thrpt:  [26.152 MiB/s 26.575 MiB/s 26.958 MiB/s]
+                 change:
+                        time:   [-7.4185% -5.5253% -3.5290%] (p = 0.00 < 0.05)
+                        thrpt:  [+3.6581% +5.8484% +8.0129%]
+                        Performance has improved.
+Found 8 outliers among 100 measurements (8.00%)
+  5 (5.00%) high mild
+  3 (3.00%) high severe
+linter/flake8-executable/Executable WITH Shebang
+                        time:   [9.7856 µs 9.9242 µs 10.085 µs]
+                        thrpt:  [26.950 MiB/s 27.387 MiB/s 27.775 MiB/s]
+                 change:
+                        time:   [-9.2218% -5.4292% -1.9007%] (p = 0.00 < 0.05)
+                        thrpt:  [+1.9376% +5.7409% +10.159%]
+                        Performance has improved.
+Found 8 outliers among 100 measurements (8.00%)
+  5 (5.00%) high mild
+  3 (3.00%) high severe
+linter/flake8-executable/NOT Executable NO Shebang
+                        time:   [9.6756 µs 9.7882 µs 9.9204 µs]
+                        thrpt:  [25.283 MiB/s 25.624 MiB/s 25.922 MiB/s]
+                 change:
+                        time:   [+4.2187% +6.0579% +8.0532%] (p = 0.00 < 0.05)
+                        thrpt:  [-7.4530% -5.7119% -4.0479%]
+                        Performance has regressed.
+Found 9 outliers among 100 measurements (9.00%)
+  8 (8.00%) high mild
+  1 (1.00%) high severe
+linter/flake8-executable/NOT Executable WITH Shebang
+                        time:   [9.1910 µs 9.2663 µs 9.3533 µs]
+                        thrpt:  [29.161 MiB/s 29.435 MiB/s 29.676 MiB/s]
+                 change:
+                        time:   [-4.2982% -2.6683% -1.0766%] (p = 0.00 < 0.05)
+                        thrpt:  [+1.0883% +2.7414% +4.4912%]
+                        Performance has improved.
+Found 10 outliers among 100 measurements (10.00%)
+  6 (6.00%) high mild
+  4 (4.00%) high severe
