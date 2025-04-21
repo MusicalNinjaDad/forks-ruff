@@ -17,6 +17,10 @@ test = false
 doctest = false
 
 [[bench]]
+name = "flake8_executable"
+harness = false
+
+[[bench]]
 name = "linter"
 harness = false
 
