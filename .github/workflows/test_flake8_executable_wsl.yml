@@ -1,4 +1,19 @@
-name: check flake8_executable lints
+# This workflow will check flake8_executable lints on:
+# - Native Linux
+# - WSL, using an ext4 filesystem
+# - WSL, using a windows filesystem
+#
+# This is to ensure that EXE001 & EXE002 are automatically disabled
+# where appropriate.
+#
+# It will run when:
+# - this file is changed or
+# - any of the flake8_executable code, tests, fixtures, ... are changed.
+#
+# On first run it will cache the installed WSL distro, as the initial
+# installation is time-consuming.
+
+name: Check flake8_executable lints
 
 on:
   push:
@@ -83,7 +98,7 @@ jobs:
           wsl --update
           Write-Output "Importing $env:VHDX_FILE as $env:DISTRO"
           wsl --import-in-place $env:DISTRO $env:VHDX_FILE
-      # Using the wsl-native filesystem reduces build from 10 mins to 3 mins
+      # Using the wsl-native filesystem for storing build artifacts reduces build from 10 mins to 3 mins
       - name: "Use wsl-native file system for ./target"
         uses: ubuntu/WSL/.github/actions/wsl-bash
         with:

@@ -1,3 +1,10 @@
+# Prepare a cached vhdx file to be imported using `wsl --import-in-place DISTRO VHDX_FILE`
+#
+# - Install a given WSL distro on a windows runner
+# - Install the required packages and tools for building ruff
+# - Create a directory in the WSL filesystem to use for the workspace
+# - Export and cache the results
+
 name: "Create and cache WSL vhdx"
 
 inputs:
@@ -8,10 +15,10 @@ inputs:
     description: "The path to use with actions/cache"
     required: true
   vhdx_file:
-    description: "The full path to the vhdx file restored by actions/cache"
+    description: "The full path to the vhdx file, this should be be under cache_path"
     required: true
   distro:
-    description: "The distro name to use with wsl --import-in-place and Vampire/setup-wsl"
+    description: "The distro name to use with wsl --import-in-place"
     required: true
   ext4_workspace:
     description: "The path to the workspace directory on the wsl ext4 filesystem"
