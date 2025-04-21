@@ -47,23 +47,23 @@ static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 pub static _rjem_malloc_conf: &[u8] = b"dirty_decay_ms:-1,muzzy_decay_ms:-1\0";
 
 static EXE_NO_SHEBANG: TestFile = TestFile::new(
-    "Executable NO Shebang",
-    include_str!("../resources/flake8_executable/EXE002_1.py"),
+    "flake8_executable/ExeNoShebang.py",
+    include_str!("../resources/flake8_executable/ExeNoShebang.py"),
 );
 
 static EXE_WITH_SHEBANG: TestFile = TestFile::new(
-    "Executable WITH Shebang",
-    include_str!("../resources/flake8_executable/EXE001_3.py"),
+    "flake8_executable/ExeWithShebang.py",
+    include_str!("../resources/flake8_executable/ExeWithShebang.py"),
 );
 
 static NOEXE_NO_SHEBANG: TestFile = TestFile::new(
-    "NOT Executable NO Shebang",
-    include_str!("../resources/flake8_executable/EXE002_2.py"),
+    "flake8_executable/NotExeNoShebang.py",
+    include_str!("../resources/flake8_executable/NotExeNoShebang.py"),
 );
 
 static NOEXE_WITH_SHEBANG: TestFile = TestFile::new(
-    "NOT Executable WITH Shebang",
-    include_str!("../resources/flake8_executable/EXE001_1.py"),
+    "flake8_executable/NotExeWithShebang.py",
+    include_str!("../resources/flake8_executable/NotExeWithShebang.py"),
 );
 
 fn create_test_cases() -> Vec<TestCase> {
