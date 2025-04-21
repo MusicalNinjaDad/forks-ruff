@@ -31,7 +31,6 @@ mod tests {
     #[test_case(Path::new("EXE005_1.py"))]
     #[test_case(Path::new("EXE005_2.py"))]
     #[test_case(Path::new("EXE005_3.py"))]
-    #[cfg(not(test_environment = "ntfs"))]
     fn rules(path: &Path) -> Result<()> {
         let snapshot = path.to_string_lossy().into_owned();
         let diagnostics = test_path(
