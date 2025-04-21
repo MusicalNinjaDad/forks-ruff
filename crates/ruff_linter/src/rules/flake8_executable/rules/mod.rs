@@ -23,17 +23,24 @@ mod shebang_missing_python;
 mod shebang_not_executable;
 mod shebang_not_first_line;
 
-static WSL_NTFS: OnceLock<bool> = OnceLock::new();
-
-// WSL supports Windows file systems, which do not have executable bits. Instead, everything is executable.
-// Therefore, we skip EXE001 & EXE002 on WSL if we detect this situation.
+// Some file systems do not support executable bits. Instead, everything is executable.
+// In particular this occurs on WSL (#3110, #5445, #10084),
+// or when the user has mounted a FAT, NTFS, CIFS, etc. partition for other reasons. (#12941)
 //
-// To avoid performance penalties, and offer a workaround for #12941, the user can
-// identify the filesystem by setting the environment variable `RUFF_WSL_FILESYSTEM`
-fn wsl_ntfs_check(project_root: &Path) -> bool {
-    // TODO (MusicalNinjaDad): Move this from a direct check here to a command-line option with env default (in ruff/args.rs)
-    *WSL_NTFS.get_or_init(|| {
-        NamedTempFile::new_in(project_root).map_err(std::convert::Into::into)
+// We need to skip EXE001 & EXE002 if we detect this situation.
+//
+// Benchmarking shows no noticable difference in performance if we always run this check,
+// as long as we use a `OnceLock`.
+// Trying work out, or allow the user (not project) to specify, when to run the check
+// adds significant complexity to the code, to also support cases like #12941.
+static EXECUTABLE_BY_DEFAULT: OnceLock<bool> = OnceLock::new();
+
+// Try to create a temporary file in the project root & check whether it is executable.
+// If it is, we know all files are executable by default.
+// If the test fails for some reason (read-only, IOError, ...), we'll assume a normal filesystem.
+fn executable_by_default(location: &Path) -> bool {
+    *EXECUTABLE_BY_DEFAULT.get_or_init(|| {
+        NamedTempFile::new_in(location).map_err(std::convert::Into::into)
             .and_then(|tmpfile| is_executable(tmpfile.path()))
             .unwrap_or(false)
     })
@@ -57,7 +64,7 @@ pub(crate) fn from_tokens(
             }
 
             if settings.rules.enabled(Rule::ShebangNotExecutable)
-                && !wsl_ntfs_check(&settings.project_root)
+                && !executable_by_default(&settings.project_root)
             {
                 if let Some(diagnostic) = shebang_not_executable(path, range) {
                     diagnostics.push(diagnostic);
@@ -76,7 +83,7 @@ pub(crate) fn from_tokens(
 
     if !has_any_shebang {
         if settings.rules.enabled(Rule::ShebangMissingExecutableFile)
-            && !wsl_ntfs_check(&settings.project_root)
+            && !executable_by_default(&settings.project_root)
         {
             if let Some(diagnostic) = shebang_missing_executable_file(path) {
                 diagnostics.push(diagnostic);
