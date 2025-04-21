@@ -75,7 +75,6 @@ url = { workspace = true }
 [dev-dependencies]
 insta = { workspace = true, features = ["filters", "json", "redactions"] }
 test-case = { workspace = true }
-testing_logger = { workspace = true }
 # Disable colored output in tests
 colored = { workspace = true, features = ["no-color"] }
 
