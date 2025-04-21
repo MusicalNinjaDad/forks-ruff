@@ -24,25 +24,18 @@ mod shebang_not_executable;
 mod shebang_not_first_line;
 
 // Some file systems do not support executable bits. Instead, everything is executable.
-// In particular this occurs on WSL (#3110, #5445, #10084),
-// or when the user has mounted a FAT, NTFS, CIFS, etc. partition for other reasons. (#12941)
+// See #3110, #5445, #10084, #12941
 //
-// We need to skip EXE001 & EXE002 if we detect this situation.
-//
-// Benchmarking shows no noticable difference in performance if we always run this check,
-// as long as we use a `OnceLock`.
-// Trying work out, or allow the user (not project) to specify, when to run the check
-// adds significant complexity to the code, to also support cases like #12941.
+// Benchmarking shows no noticable difference in performance if we run this check on
+// all systems, as long as we use a `OnceLock`.
 static EXECUTABLE_BY_DEFAULT: OnceLock<bool> = OnceLock::new();
 
-// Try to create a temporary file in the project root & check whether it is executable.
-// If it is, we know all files are executable by default.
-// If the test fails for some reason (read-only, IOError, ...), we'll assume a normal filesystem.
-fn executable_by_default(location: &Path) -> bool {
+fn executable_by_default(settings: &LinterSettings) -> bool {
     *EXECUTABLE_BY_DEFAULT.get_or_init(|| {
-        NamedTempFile::new_in(location).map_err(std::convert::Into::into)
+        NamedTempFile::new_in(&settings.project_root)
+            .map_err(std::convert::Into::into)
             .and_then(|tmpfile| is_executable(tmpfile.path()))
-            .unwrap_or(false)
+            .unwrap_or(false) // Assume a normal filesystem in case of read-only, IOError, ...
     })
 }
 
@@ -64,7 +57,7 @@ pub(crate) fn from_tokens(
             }
 
             if settings.rules.enabled(Rule::ShebangNotExecutable)
-                && !executable_by_default(&settings.project_root)
+                && !executable_by_default(settings)
             {
                 if let Some(diagnostic) = shebang_not_executable(path, range) {
                     diagnostics.push(diagnostic);
@@ -83,7 +76,7 @@ pub(crate) fn from_tokens(
 
     if !has_any_shebang {
         if settings.rules.enabled(Rule::ShebangMissingExecutableFile)
-            && !executable_by_default(&settings.project_root)
+            && !executable_by_default(settings)
         {
             if let Some(diagnostic) = shebang_missing_executable_file(path) {
                 diagnostics.push(diagnostic);
