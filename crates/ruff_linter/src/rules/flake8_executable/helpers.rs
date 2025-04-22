@@ -25,7 +25,7 @@ static EXECUTABLE_BY_DEFAULT: OnceLock<bool> = OnceLock::new();
 pub(crate) fn executable_by_default(settings: &LinterSettings) -> bool {
     *EXECUTABLE_BY_DEFAULT.get_or_init(|| {
         is_executable(&settings.project_root.join("pyproject.toml")).unwrap_or(true)
-            // if pyproject.toml is executable OR doesn't exist, run a slower check too:
+            // if pyproject.toml is executable or doesn't exist, run a slower check too:
             && NamedTempFile::new_in(&settings.project_root)
                 .map_err(std::convert::Into::into)
                 .and_then(|tmpfile| is_executable(tmpfile.path()))
