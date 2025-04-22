@@ -37,9 +37,7 @@ pub(crate) fn from_tokens(
             }
 
             if settings.rules.enabled(Rule::ShebangNotExecutable) {
-                if let Some(diagnostic) =
-                    shebang_not_executable(path, range)
-                {
+                if let Some(diagnostic) = shebang_not_executable(path, range) {
                     diagnostics.push(diagnostic);
                 }
             }
@@ -56,8 +54,7 @@ pub(crate) fn from_tokens(
 
     if !has_any_shebang {
         if settings.rules.enabled(Rule::ShebangMissingExecutableFile) {
-            if let Some(diagnostic) = shebang_missing_executable_file(path, settings)
-            {
+            if let Some(diagnostic) = shebang_missing_executable_file(path, settings) {
                 diagnostics.push(diagnostic);
             }
         }

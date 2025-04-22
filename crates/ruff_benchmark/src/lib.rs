@@ -28,7 +28,6 @@ pub static LARGE_DATASET: TestFile = TestFile::new(
     include_str!("../resources/large/dataset.py"),
 );
 
-
 /// Relative size of a test case. Benchmarks can use it to configure the time for how long a benchmark should run to get stable results.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum TestCaseSpeed {

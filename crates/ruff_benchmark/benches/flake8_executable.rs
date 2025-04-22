@@ -116,19 +116,17 @@ fn benchmark_linter(mut group: BenchmarkGroup, settings: &LinterSettings) {
 
 fn benchmark_flake8_executable_rules(criterion: &mut Criterion) {
     // Collect only flake8-executable rules from the registry
-    let rules: RuleTable = RuleSelector::Linter(Flake8Executable)
-        .all_rules()
-        .collect();
+    let rules: RuleTable = RuleSelector::Linter(Flake8Executable).all_rules().collect();
 
     let settings = LinterSettings {
         rules,
         project_root: PathBuf::from(file!())
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .join("resources")
-        .join("flake8_executable"),
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("resources")
+            .join("flake8_executable"),
         ..LinterSettings::default()
     };
 

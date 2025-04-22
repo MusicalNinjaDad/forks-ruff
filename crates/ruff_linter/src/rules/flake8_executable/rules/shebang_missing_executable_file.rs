@@ -62,7 +62,6 @@ pub(crate) fn shebang_missing_executable_file(
     filepath: &Path,
     settings: &LinterSettings,
 ) -> Option<Diagnostic> {
-
     if let Ok(true) = is_executable(filepath) {
         if !executable_by_default(settings) {
             return Some(Diagnostic::new(
