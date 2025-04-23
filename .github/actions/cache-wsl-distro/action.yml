@@ -21,40 +21,38 @@ runs:
   using: "composite"
   steps:
     - name: "Setup WSL"
-      uses: Vampire/setup-wsl@v5
+      uses: ubuntu/WSL/.github/actions/wsl-install@main
       with:
-        distribution: ${{ inputs.distro }}
-        use-cache: 'false'
-        additional-packages:
-          build-essential
-          mold
-    - name: "Who am I"
-      shell: wsl-bash {0}
-      run: |
-        id
-        uname -a
-    - name: "Filesystems"
-      shell: wsl-bash {0}
-      run: |
-        df -T
+        distro: ${{ inputs.distro }}
+    - name: "Validate Installation"
+      uses: ubuntu/WSL/.github/actions/wsl-bash@main
+      with:
+        distro: ${{ inputs.distro }}
+        exec: |
+          id
+          uname -a
+          df -T
+    - name: "Install Toolchain"
+      uses: ubuntu/WSL/.github/actions/wsl-bash@main
+      with:
+        distro: ${{ inputs.distro }}
+        exec: |
+          echo "::notice::Build tools"
+          apt install -y build-essential mold
+          echo "::notice::Rustup"
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "::notice::Insta"
+          curl -LsSf https://insta.rs/install.sh | sh
+          echo "::notice::Nextest"
+          source $HOME/.cargo/env
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+          cargo binstall cargo-nextest --secure -y
     - name: "Create dir for ext4 workspace"
-      shell: wsl-bash {0}
-      run: |
-        mkdir --parents ${{ inputs.ext4_workspace }}
-    - name: "Install Rust toolchain"
-      shell: wsl-bash {0}
-      run: |
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-    - name: "Install insta snapshot testing"
-      shell: wsl-bash {0}
-      run: |
-        curl -LsSf https://insta.rs/install.sh | sh
-    - name: "Install nextest"
-      shell: wsl-bash {0}
-      run: |
-        source $HOME/.cargo/env
-        curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-        cargo binstall cargo-nextest --secure -y
+      uses: ubuntu/WSL/.github/actions/wsl-bash@main
+      with:
+        distro: ${{ inputs.distro }}
+        exec: |
+          mkdir --parents ${{ inputs.ext4_workspace }}
     - name: "Export distro for cache"
       shell: pwsh
       env:
