@@ -1,10 +1,3 @@
-# Prepare a cached vhdx file to be imported using `wsl --import-in-place DISTRO VHDX_FILE`
-#
-# - Install a given WSL distro on a windows runner
-# - Install the required packages and tools for building ruff
-# - Create a directory in the WSL filesystem to use for the workspace
-# - Export and cache the results
-
 name: "Create and cache WSL vhdx"
 
 inputs:
@@ -15,10 +8,10 @@ inputs:
     description: "The path to use with actions/cache"
     required: true
   vhdx_file:
-    description: "The full path to the vhdx file, this should be be under cache_path"
+    description: "The full path to the vhdx file restored by actions/cache"
     required: true
   distro:
-    description: "The distro name to use with wsl --import-in-place"
+    description: "The distro name to use with wsl --import-in-place and Vampire/setup-wsl"
     required: true
   ext4_workspace:
     description: "The path to the workspace directory on the wsl ext4 filesystem"
@@ -27,41 +20,50 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: "Update WSL"
+      shell: pwsh
+      run: |
+        wsl --update --web-download
     - name: "Setup WSL"
-      uses: Vampire/setup-wsl@v5
+      uses: ubuntu/WSL/.github/actions/wsl-install@main
       with:
-        distribution: ${{ inputs.distro }}
-        use-cache: 'false'
-        additional-packages:
-          build-essential
-          mold
-    - name: "Who am I"
-      shell: wsl-bash {0}
-      run: |
-        id
-        uname -a
-    - name: "Filesystems"
-      shell: wsl-bash {0}
-      run: |
-        df -T
+        distro: ${{ inputs.distro }}
+    - name: "Validate Installation"
+      uses: ubuntu/WSL/.github/actions/wsl-bash@main
+      with:
+        distro: ${{ inputs.distro }}
+        exec: |
+          id
+          uname -a
+          df -T
+    - name: "Install Toolchain"
+      uses: ubuntu/WSL/.github/actions/wsl-bash@main
+      with:
+        distro: ${{ inputs.distro }}
+        exec: |
+          set -ex
+          export CI=1
+          echo "::group::Build tools"
+          apt update
+          apt install -y build-essential mold
+          echo "::endgroup::"
+          echo "::group::Rustup"
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "::endgroup::"
+          echo "::group::Insta"
+          curl -LsSf https://insta.rs/install.sh | sh
+          echo "::endgroup::"
+          echo "::group::Nextest"
+          source $HOME/.cargo/env
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+          cargo binstall cargo-nextest --secure -y
+          echo "::endgroup::"
     - name: "Create dir for ext4 workspace"
-      shell: wsl-bash {0}
-      run: |
-        mkdir --parents ${{ inputs.ext4_workspace }}
-    - name: "Install Rust toolchain"
-      shell: wsl-bash {0}
-      run: |
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-    - name: "Install insta snapshot testing"
-      shell: wsl-bash {0}
-      run: |
-        curl -LsSf https://insta.rs/install.sh | sh
-    - name: "Install nextest"
-      shell: wsl-bash {0}
-      run: |
-        source $HOME/.cargo/env
-        curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-        cargo binstall cargo-nextest --secure -y
+      uses: ubuntu/WSL/.github/actions/wsl-bash@main
+      with:
+        distro: ${{ inputs.distro }}
+        exec: |
+          mkdir --parents ${{ inputs.ext4_workspace }}
     - name: "Export distro for cache"
       shell: pwsh
       env:
