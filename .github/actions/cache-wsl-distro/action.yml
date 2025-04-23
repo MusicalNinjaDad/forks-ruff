@@ -41,7 +41,9 @@ runs:
       with:
         distro: ${{ inputs.distro }}
         exec: |
+          set -e
           echo "::notice title=Build tools::"
+          apt update
           apt install -y build-essential mold
           echo "::notice title=Rustup::"
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
