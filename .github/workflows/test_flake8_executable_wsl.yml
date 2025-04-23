@@ -35,7 +35,7 @@ jobs:
     env:
       CACHE_FILE: "ubuntu_ruff.vhdx"
       CACHE_DIR: ".wsl_cache"
-      DISTRO: "Ubuntu-24.04"
+      DISTRO: "Ubuntu"
       EXT4_WORKSPACE: "/workspaces/${{ github.repository }}"
     outputs:
       cache_key: ${{ steps.calc_vars.outputs.cache_key }}

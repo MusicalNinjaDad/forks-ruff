@@ -28,7 +28,10 @@ runs:
         $ErrorActionPreference = 'Stop'
         $env:WSL_UTF8=1
         wsl --update --web-download
+        wsl --list --online
+        wsl -l -v
         wsl --install $env:DISTRO --web-download --no-launch
+        wsl -l -v
     - name: "Validate Installation"
       uses: ubuntu/WSL/.github/actions/wsl-bash@main
       with:
