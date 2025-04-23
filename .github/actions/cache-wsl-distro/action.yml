@@ -20,6 +20,9 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: "Update WSL"
+      run: |
+        wsl --update --web-download
     - name: "Setup WSL"
       uses: ubuntu/WSL/.github/actions/wsl-install@main
       with:
