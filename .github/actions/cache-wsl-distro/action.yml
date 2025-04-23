@@ -24,10 +24,8 @@ runs:
       uses: Vampire/setup-wsl@v5
       with:
         distribution: ${{ inputs.distro }}
-        use-cache: 'false'
-        additional-packages:
-          build-essential
-          mold
+        use-cache: "false"
+        additional-packages: build-essential mold
     - name: "Validate Installation"
       uses: ubuntu/WSL/.github/actions/wsl-bash@main
       with:
