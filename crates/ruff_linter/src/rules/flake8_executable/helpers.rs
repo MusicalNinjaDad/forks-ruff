@@ -18,7 +18,7 @@ pub(super) fn is_executable(filepath: &Path) -> Result<bool> {
 // Some file systems do not support executable bits. Instead, everything is executable.
 // See #3110, #5445, #10084, #12941
 //
-// Benchmarking shows no noticable difference in performance if we run this check on
+// Benchmarking shows no noticeable difference in performance if we run this check on
 // all systems, as long as we use a `OnceLock` and a simple test first (filemode of pyproject.toml).
 static EXECUTABLE_BY_DEFAULT: OnceLock<bool> = OnceLock::new();
 

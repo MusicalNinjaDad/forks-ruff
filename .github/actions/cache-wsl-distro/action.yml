@@ -1,7 +1,7 @@
 name: "Create and cache WSL vhdx"
 
 inputs:
-  cache_key: 
+  cache_key:
     description: "The cache key to use with actions/cache"
     required: true
   cache_path:
@@ -81,13 +81,13 @@ runs:
       env:
         VHDX_FILE: ${{ inputs.vhdx_file }}
       run: |
-          $ErrorActionPreference = 'Stop'
-          if (Test-Path $env:VHDX_FILE) {
-          exit 0
-          } else {
-          Write-Error "File not found: $env:VHDX_FILE"
-          exit 1
-          }
+        $ErrorActionPreference = 'Stop'
+        if (Test-Path $env:VHDX_FILE) {
+        exit 0
+        } else {
+        Write-Error "File not found: $env:VHDX_FILE"
+        exit 1
+        }
     - name: "Write cache"
       uses: actions/cache/save@v4
       with:
