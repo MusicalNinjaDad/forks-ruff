@@ -27,10 +27,11 @@ runs:
       run: |
         $ErrorActionPreference = 'Stop'
         $env:WSL_UTF8=1
+        Write-Output "Updating WSL"
         wsl --update --web-download
-        wsl --list --online
-        wsl -l -v
+        Write-Output "Installing $env:DISTRO"
         wsl --install $env:DISTRO --web-download --no-launch
+        Write-Output "Finished installing $env:DISTRO"
         wsl -l -v
     - name: "Validate Installation"
       uses: ubuntu/WSL/.github/actions/wsl-bash@main
