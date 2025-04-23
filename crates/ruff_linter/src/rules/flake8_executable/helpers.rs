@@ -22,7 +22,7 @@ pub(super) fn is_executable(filepath: &Path) -> Result<bool> {
 // all systems, as long as we use a `OnceLock` and a simple test first (filemode of pyproject.toml).
 static EXECUTABLE_BY_DEFAULT: OnceLock<bool> = OnceLock::new();
 
-pub(crate) fn executable_by_default(settings: &LinterSettings) -> bool {
+pub(super) fn executable_by_default(settings: &LinterSettings) -> bool {
     *EXECUTABLE_BY_DEFAULT.get_or_init(|| {
         is_executable(&settings.project_root.join("pyproject.toml")).unwrap_or(true)
             // if pyproject.toml is executable or doesn't exist, run a slower check too:
