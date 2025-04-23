@@ -47,6 +47,13 @@ static_assert(is_assignable_to(Unknown, Literal[1]))
 static_assert(is_assignable_to(Any, Literal[1]))
 static_assert(is_assignable_to(Literal[1], Unknown))
 static_assert(is_assignable_to(Literal[1], Any))
+
+class SubtypeOfAny(Any): ...
+
+static_assert(is_assignable_to(SubtypeOfAny, Any))
+static_assert(is_assignable_to(SubtypeOfAny, int))
+static_assert(is_assignable_to(Any, SubtypeOfAny))
+static_assert(not is_assignable_to(int, SubtypeOfAny))
 ```
 
 ## Literal types
@@ -502,6 +509,55 @@ c: Callable[[Any], str] = f
 
 # error: [invalid-assignment] "Object of type `def g(x: Any) -> int` is not assignable to `(Any, /) -> str`"
 c: Callable[[Any], str] = g
+```
+
+### Method types
+
+```py
+from typing import Any, Callable
+
+class A:
+    def f(self, x: Any) -> str:
+        return ""
+
+    def g(self, x: Any) -> int:
+        return 1
+
+c: Callable[[Any], str] = A().f
+
+# error: [invalid-assignment] "Object of type `bound method A.g(x: Any) -> int` is not assignable to `(Any, /) -> str`"
+c: Callable[[Any], str] = A().g
+```
+
+### Overloads
+
+`overloaded.pyi`:
+
+```pyi
+from typing import Any, overload
+
+@overload
+def overloaded() -> None: ...
+@overload
+def overloaded(a: str) -> str: ...
+@overload
+def overloaded(a: str, b: Any) -> str: ...
+```
+
+```py
+from overloaded import overloaded
+from typing import Any, Callable
+
+c: Callable[[], None] = overloaded
+c: Callable[[str], str] = overloaded
+c: Callable[[str, Any], Any] = overloaded
+c: Callable[..., str] = overloaded
+
+# error: [invalid-assignment]
+c: Callable[..., int] = overloaded
+
+# error: [invalid-assignment]
+c: Callable[[int], str] = overloaded
 ```
 
 [typing documentation]: https://typing.python.org/en/latest/spec/concepts.html#the-assignable-to-or-consistent-subtyping-relation

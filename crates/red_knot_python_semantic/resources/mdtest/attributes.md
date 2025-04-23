@@ -302,7 +302,7 @@ class C:
 
 c_instance = C()
 reveal_type(c_instance.a)  # revealed: Unknown | Literal[1]
-reveal_type(c_instance.b)  # revealed: Unknown | @Todo(starred unpacking)
+reveal_type(c_instance.b)  # revealed: Unknown
 ```
 
 #### Attributes defined in for-loop (unpacking)
@@ -397,15 +397,27 @@ class IntIterable:
     def __iter__(self) -> IntIterator:
         return IntIterator()
 
+class TupleIterator:
+    def __next__(self) -> tuple[int, str]:
+        return (1, "a")
+
+class TupleIterable:
+    def __iter__(self) -> TupleIterator:
+        return TupleIterator()
+
 class C:
     def __init__(self) -> None:
         [... for self.a in IntIterable()]
+        [... for (self.b, self.c) in TupleIterable()]
+        [... for self.d in IntIterable() for self.e in IntIterable()]
 
 c_instance = C()
 
-# TODO: Should be `Unknown | int`
-# error: [unresolved-attribute]
-reveal_type(c_instance.a)  # revealed: Unknown
+reveal_type(c_instance.a)  # revealed: Unknown | int
+reveal_type(c_instance.b)  # revealed: Unknown | int
+reveal_type(c_instance.c)  # revealed: Unknown | str
+reveal_type(c_instance.d)  # revealed: Unknown | int
+reveal_type(c_instance.e)  # revealed: Unknown | int
 ```
 
 #### Conditionally declared / bound attributes
@@ -1665,7 +1677,7 @@ functions are instances of that class:
 def f(): ...
 
 reveal_type(f.__defaults__)  # revealed: @Todo(full tuple[...] support) | None
-reveal_type(f.__kwdefaults__)  # revealed: @Todo(generics) | None
+reveal_type(f.__kwdefaults__)  # revealed: @Todo(specialized non-generic class) | None
 ```
 
 Some attributes are special-cased, however:
@@ -1698,9 +1710,9 @@ Most attribute accesses on bool-literal types are delegated to `builtins.bool`, 
 bools are instances of that class:
 
 ```py
-# revealed: bound method Literal[True].__and__(**kwargs: @Todo(todo signature **kwargs)) -> @Todo(return type of overloaded function)
+# revealed: Overload[(value: bool, /) -> bool, (value: int, /) -> int]
 reveal_type(True.__and__)
-# revealed: bound method Literal[False].__or__(**kwargs: @Todo(todo signature **kwargs)) -> @Todo(return type of overloaded function)
+# revealed: Overload[(value: bool, /) -> bool, (value: int, /) -> int]
 reveal_type(False.__or__)
 ```
 
@@ -1716,7 +1728,8 @@ reveal_type(False.real)  # revealed: Literal[0]
 All attribute access on literal `bytes` types is currently delegated to `builtins.bytes`:
 
 ```py
-reveal_type(b"foo".join)  # revealed: bound method Literal[b"foo"].join(iterable_of_bytes: @Todo(generics), /) -> bytes
+# revealed: bound method Literal[b"foo"].join(iterable_of_bytes: @Todo(specialized non-generic class), /) -> bytes
+reveal_type(b"foo".join)
 # revealed: bound method Literal[b"foo"].endswith(suffix: @Todo(Support for `typing.TypeAlias`), start: SupportsIndex | None = ellipsis, end: SupportsIndex | None = ellipsis, /) -> bool
 reveal_type(b"foo".endswith)
 ```
@@ -1819,6 +1832,89 @@ def f(never: Never):
     never.another_attribute = never
 ```
 
+### Cyclic implicit attributes
+
+Inferring types for undeclared implicit attributes can be cyclic:
+
+```py
+class C:
+    def __init__(self):
+        self.x = 1
+
+    def copy(self, other: "C"):
+        self.x = other.x
+
+reveal_type(C().x)  # revealed: Unknown | Literal[1]
+```
+
+If the only assignment to a name is cyclic, we just infer `Unknown` for that attribute:
+
+```py
+class D:
+    def copy(self, other: "D"):
+        self.x = other.x
+
+reveal_type(D().x)  # revealed: Unknown
+```
+
+If there is an annotation for a name, we don't try to infer any type from the RHS of assignments to
+that name, so these cases don't trigger any cycle:
+
+```py
+class E:
+    def __init__(self):
+        self.x: int = 1
+
+    def copy(self, other: "E"):
+        self.x = other.x
+
+reveal_type(E().x)  # revealed: int
+
+class F:
+    def __init__(self):
+        self.x = 1
+
+    def copy(self, other: "F"):
+        self.x: int = other.x
+
+reveal_type(F().x)  # revealed: int
+
+class G:
+    def copy(self, other: "G"):
+        self.x: int = other.x
+
+reveal_type(G().x)  # revealed: int
+```
+
+We can even handle cycles involving multiple classes:
+
+```py
+class A:
+    def __init__(self):
+        self.x = 1
+
+    def copy(self, other: "B"):
+        self.x = other.x
+
+class B:
+    def copy(self, other: "A"):
+        self.x = other.x
+
+reveal_type(B().x)  # revealed: Unknown | Literal[1]
+reveal_type(A().x)  # revealed: Unknown | Literal[1]
+```
+
+This case additionally tests our union/intersection simplification logic:
+
+```py
+class H:
+    def __init__(self):
+        self.x = 1
+
+    def copy(self, other: "H"):
+        self.x = other.x or self.x
+```
+
 ### Builtin types attributes
 
 This test can probably be removed eventually, but we currently include it because we do not yet
@@ -1868,20 +1964,6 @@ class Foo(enum.Enum):
 reveal_type(Foo.BAR)  # revealed: @Todo(Attribute access on enum classes)
 reveal_type(Foo.BAR.value)  # revealed: @Todo(Attribute access on enum classes)
 reveal_type(Foo.__members__)  # revealed: @Todo(Attribute access on enum classes)
-```
-
-## `super()`
-
-`super()` is not supported yet, but we do not emit false positives on `super()` calls.
-
-```py
-class Foo:
-    def bar(self) -> int:
-        return 42
-
-class Bar(Foo):
-    def bar(self) -> int:
-        return super().bar()
 ```
 
 ## References

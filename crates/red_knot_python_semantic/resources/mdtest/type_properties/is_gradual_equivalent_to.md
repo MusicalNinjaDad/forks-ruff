@@ -47,10 +47,7 @@ static_assert(is_gradual_equivalent_to(Intersection[str | int, Not[type[Any]]], 
 static_assert(not is_gradual_equivalent_to(str | int, int | str | bytes))
 static_assert(not is_gradual_equivalent_to(str | int | bytes, int | str | dict))
 
-# TODO: No errors
-# error: [static-assert-error]
 static_assert(is_gradual_equivalent_to(Unknown, Unknown | Any))
-# error: [static-assert-error]
 static_assert(is_gradual_equivalent_to(Unknown, Intersection[Unknown, Any]))
 ```
 
@@ -156,5 +153,7 @@ def f6(a, /): ...
 
 static_assert(not is_gradual_equivalent_to(CallableTypeOf[f1], CallableTypeOf[f6]))
 ```
+
+TODO: Overloads
 
 [materializations]: https://typing.python.org/en/latest/spec/glossary.html#term-materialize

@@ -5,6 +5,7 @@ use ruff_db::files::File;
 use ruff_db::parsed::parsed_module;
 use ruff_index::{IndexSlice, IndexVec};
 
+use ruff_python_parser::semantic_errors::SemanticSyntaxError;
 use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 use salsa::plumbing::AsId;
 use salsa::Update;
@@ -175,6 +176,9 @@ pub(crate) struct SemanticIndex<'db> {
 
     /// Map of all of the eager bindings that appear in this file.
     eager_bindings: FxHashMap<EagerBindingsKey, ScopedEagerBindingsId>,
+
+    /// List of all semantic syntax errors in this file.
+    semantic_syntax_errors: Vec<SemanticSyntaxError>,
 }
 
 impl<'db> SemanticIndex<'db> {
@@ -399,6 +403,10 @@ impl<'db> SemanticIndex<'db> {
             None => EagerBindingsResult::NotFound,
         }
     }
+
+    pub(crate) fn semantic_syntax_errors(&self) -> &[SemanticSyntaxError] {
+        &self.semantic_syntax_errors
+    }
 }
 
 pub struct AncestorsIter<'a> {
@@ -497,11 +505,10 @@ impl FusedIterator for ChildrenIter<'_> {}
 mod tests {
     use ruff_db::files::{system_path_to_file, File};
     use ruff_db::parsed::parsed_module;
-    use ruff_db::system::DbWithWritableSystem as _;
-    use ruff_python_ast as ast;
+    use ruff_python_ast::{self as ast};
     use ruff_text_size::{Ranged, TextRange};
 
-    use crate::db::tests::TestDb;
+    use crate::db::tests::{TestDb, TestDbBuilder};
     use crate::semantic_index::ast_ids::{HasScopedUseId, ScopedUseId};
     use crate::semantic_index::definition::{Definition, DefinitionKind};
     use crate::semantic_index::symbol::{
@@ -528,11 +535,15 @@ mod tests {
         file: File,
     }
 
-    fn test_case(content: impl AsRef<str>) -> TestCase {
-        let mut db = TestDb::new();
-        db.write_file("test.py", content).unwrap();
+    fn test_case(content: &str) -> TestCase {
+        const FILENAME: &str = "test.py";
 
-        let file = system_path_to_file(&db, "test.py").unwrap();
+        let db = TestDbBuilder::new()
+            .with_file(FILENAME, content)
+            .build()
+            .unwrap();
+
+        let file = system_path_to_file(&db, FILENAME).unwrap();
 
         TestCase { db, file }
     }
@@ -937,7 +948,7 @@ def f(a: str, /, b: str, c: int = 1, *args, d: int = 2, **kwargs):
             panic!("expected generator definition")
         };
         let target = comprehension.target();
-        let name = target.id().as_str();
+        let name = target.as_name_expr().unwrap().id().as_str();
 
         assert_eq!(name, "x");
         assert_eq!(target.range(), TextRange::new(23.into(), 24.into()));

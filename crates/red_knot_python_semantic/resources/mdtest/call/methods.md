@@ -94,7 +94,7 @@ function object. We model this explicitly, which means that we can access `__kwd
 methods, even though it is not available on `types.MethodType`:
 
 ```py
-reveal_type(bound_method.__kwdefaults__)  # revealed: @Todo(generics) | None
+reveal_type(bound_method.__kwdefaults__)  # revealed: @Todo(specialized non-generic class) | None
 ```
 
 ## Basic method calls on class objects and instances
@@ -399,6 +399,11 @@ reveal_type(getattr_static(C, "f").__get__("dummy", C))  # revealed: bound metho
 
 ### Classmethods mixed with other decorators
 
+```toml
+[environment]
+python-version = "3.12"
+```
+
 When a `@classmethod` is additionally decorated with another decorator, it is still treated as a
 class method:
 
@@ -410,29 +415,19 @@ def does_nothing[T](f: T) -> T:
 
 class C:
     @classmethod
-    # TODO: no error should be emitted here (needs support for generics)
-    # error: [invalid-argument-type]
     @does_nothing
     def f1(cls: type[C], x: int) -> str:
         return "a"
-    # TODO: no error should be emitted here (needs support for generics)
-    # error: [invalid-argument-type]
+
     @does_nothing
     @classmethod
     def f2(cls: type[C], x: int) -> str:
         return "a"
 
-# TODO: All of these should be `str` (and not emit an error), once we support generics
-
-# error: [call-non-callable]
-reveal_type(C.f1(1))  # revealed: Unknown
-# error: [call-non-callable]
-reveal_type(C().f1(1))  # revealed: Unknown
-
-# error: [call-non-callable]
-reveal_type(C.f2(1))  # revealed: Unknown
-# error: [call-non-callable]
-reveal_type(C().f2(1))  # revealed: Unknown
+reveal_type(C.f1(1))  # revealed: str
+reveal_type(C().f1(1))  # revealed: str
+reveal_type(C.f2(1))  # revealed: str
+reveal_type(C().f2(1))  # revealed: str
 ```
 
 [functions and methods]: https://docs.python.org/3/howto/descriptor.html#functions-and-methods

@@ -69,8 +69,8 @@ def _(m: int, n: int):
     t[::0]  # error: [zero-stepsize-in-slice]
 
     tuple_slice = t[m:n]
-    # TODO: Support overloads... Should be `tuple[Literal[1, 'a', b"b"] | None, ...]`
-    reveal_type(tuple_slice)  # revealed: @Todo(return type of overloaded function)
+    # TODO: Should be `tuple[Literal[1, 'a', b"b"] | None, ...]`
+    reveal_type(tuple_slice)  # revealed: @Todo(full tuple[...] support)
 ```
 
 ## Inheritance
@@ -81,13 +81,11 @@ python-version = "3.9"
 ```
 
 ```py
-# TODO: `tuple[int, str]` is a valid base (generics)
-# error: [invalid-base] "Invalid class base with type `GenericAlias` (all bases must be a class, `Any`, `Unknown` or `Todo`)"
 class A(tuple[int, str]): ...
 
 # Runtime value: `(A, tuple, object)`
 # TODO: Generics
-reveal_type(A.__mro__)  # revealed: tuple[Literal[A], Unknown, Literal[object]]
+reveal_type(A.__mro__)  # revealed: tuple[Literal[A], @Todo(GenericAlias instance), Literal[object]]
 ```
 
 ## `typing.Tuple`
@@ -117,6 +115,7 @@ from typing import Tuple
 
 class C(Tuple): ...
 
-# revealed: tuple[Literal[C], Literal[tuple], Literal[Sequence], Literal[Reversible], Literal[Collection], Literal[Iterable], Literal[Container], @Todo(protocol), Literal[object]]
+# TODO: generic protocols
+# revealed: tuple[Literal[C], Literal[tuple], Literal[Sequence], Literal[Reversible], Literal[Collection], Literal[Iterable], Literal[Container], @Todo(`Protocol[]` subscript), @Todo(`Generic[]` subscript), Literal[object]]
 reveal_type(C.__mro__)
 ```

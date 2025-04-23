@@ -16,10 +16,12 @@ use crate::types::diagnostic::{
     NO_MATCHING_OVERLOAD, PARAMETER_ALREADY_ASSIGNED, TOO_MANY_POSITIONAL_ARGUMENTS,
     UNKNOWN_ARGUMENT,
 };
+use crate::types::generics::{Specialization, SpecializationBuilder};
 use crate::types::signatures::{Parameter, ParameterForm};
 use crate::types::{
-    todo_type, BoundMethodType, DataclassMetadata, FunctionDecorators, KnownClass, KnownFunction,
-    KnownInstanceType, MethodWrapperKind, PropertyInstanceType, UnionType, WrapperDescriptorKind,
+    BoundMethodType, DataclassParams, DataclassTransformerParams, FunctionDecorators, FunctionType,
+    KnownClass, KnownFunction, KnownInstanceType, MethodWrapperKind, PropertyInstanceType,
+    UnionType, WrapperDescriptorKind,
 };
 use ruff_db::diagnostic::{Annotation, Severity, Span, SubDiagnostic};
 use ruff_python_ast as ast;
@@ -147,6 +149,13 @@ impl<'db> Bindings<'db> {
         self.elements.len() == 1
     }
 
+    pub(crate) fn single_element(&self) -> Option<&CallableBinding<'db>> {
+        match self.elements.as_slice() {
+            [element] => Some(element),
+            _ => None,
+        }
+    }
+
     pub(crate) fn callable_type(&self) -> Type<'db> {
         self.signatures.callable_type
     }
@@ -170,24 +179,23 @@ impl<'db> Bindings<'db> {
         // If all union elements are not callable, report that the union as a whole is not
         // callable.
         if self.into_iter().all(|b| !b.is_callable()) {
-            context.report_lint_old(
-                &CALL_NON_CALLABLE,
-                node,
-                format_args!(
+            if let Some(builder) = context.report_lint(&CALL_NON_CALLABLE, node) {
+                builder.into_diagnostic(format_args!(
                     "Object of type `{}` is not callable",
                     self.callable_type().display(context.db())
-                ),
-            );
+                ));
+            }
             return;
         }
 
         for (index, conflicting_form) in self.conflicting_forms.iter().enumerate() {
             if *conflicting_form {
-                context.report_lint_old(
-                    &CONFLICTING_ARGUMENT_FORMS,
-                    BindingError::get_node(node, Some(index)),
-                    format_args!("Argument is used as both a value and a type form in call"),
-                );
+                let node = BindingError::get_node(node, Some(index));
+                if let Some(builder) = context.report_lint(&CONFLICTING_ARGUMENT_FORMS, node) {
+                    builder.into_diagnostic(
+                        "Argument is used as both a value and a type form in call",
+                    );
+                }
             }
         }
 
@@ -202,8 +210,17 @@ impl<'db> Bindings<'db> {
     /// Evaluates the return type of certain known callables, where we have special-case logic to
     /// determine the return type in a way that isn't directly expressible in the type system.
     fn evaluate_known_cases(&mut self, db: &'db dyn Db) {
+        let to_bool = |ty: &Option<Type<'_>>, default: bool| -> bool {
+            if let Some(Type::BooleanLiteral(value)) = ty {
+                *value
+            } else {
+                // TODO: emit a diagnostic if we receive `bool`
+                default
+            }
+        };
+
         // Each special case listed here should have a corresponding clause in `Type::signatures`.
-        for binding in &mut self.elements {
+        for (binding, callable_signature) in self.elements.iter_mut().zip(self.signatures.iter()) {
             let binding_type = binding.callable_type;
             let Some((overload_index, overload)) = binding.matching_overload_mut() else {
                 continue;
@@ -405,6 +422,21 @@ impl<'db> Bindings<'db> {
                     }
                 }
 
+                Type::DataclassTransformer(params) => {
+                    if let [Some(Type::FunctionLiteral(function))] = overload.parameter_types() {
+                        overload.set_return_type(Type::FunctionLiteral(FunctionType::new(
+                            db,
+                            function.name(db),
+                            function.known(db),
+                            function.body_scope(db),
+                            function.decorators(db),
+                            Some(params),
+                            function.generic_context(db),
+                            function.specialization(db),
+                        )));
+                    }
+                }
+
                 Type::BoundMethod(bound_method)
                     if bound_method.self_instance(db).is_property_instance() =>
                 {
@@ -527,8 +559,21 @@ impl<'db> Bindings<'db> {
                         }
                     }
 
+                    Some(KnownFunction::IsProtocol) => {
+                        if let [Some(ty)] = overload.parameter_types() {
+                            overload.set_return_type(Type::BooleanLiteral(
+                                ty.into_class_literal()
+                                    .is_some_and(|class| class.is_protocol(db)),
+                            ));
+                        }
+                    }
+
                     Some(KnownFunction::Overload) => {
-                        overload.set_return_type(todo_type!("overload[..] return type"));
+                        // TODO: This can be removed once we understand legacy generics because the
+                        // typeshed definition for `typing.overload` is an identity function.
+                        if let [Some(ty)] = overload.parameter_types() {
+                            overload.set_return_type(*ty);
+                        }
                     }
 
                     Some(KnownFunction::GetattrStatic) => {
@@ -577,53 +622,90 @@ impl<'db> Bindings<'db> {
                         if let [init, repr, eq, order, unsafe_hash, frozen, match_args, kw_only, slots, weakref_slot] =
                             overload.parameter_types()
                         {
-                            let to_bool = |ty: &Option<Type<'_>>, default: bool| -> bool {
-                                if let Some(Type::BooleanLiteral(value)) = ty {
-                                    *value
-                                } else {
-                                    // TODO: emit a diagnostic if we receive `bool`
-                                    default
-                                }
-                            };
-
-                            let mut metadata = DataclassMetadata::empty();
+                            let mut params = DataclassParams::empty();
 
                             if to_bool(init, true) {
-                                metadata |= DataclassMetadata::INIT;
+                                params |= DataclassParams::INIT;
                             }
                             if to_bool(repr, true) {
-                                metadata |= DataclassMetadata::REPR;
+                                params |= DataclassParams::REPR;
                             }
                             if to_bool(eq, true) {
-                                metadata |= DataclassMetadata::EQ;
+                                params |= DataclassParams::EQ;
                             }
                             if to_bool(order, false) {
-                                metadata |= DataclassMetadata::ORDER;
+                                params |= DataclassParams::ORDER;
                             }
                             if to_bool(unsafe_hash, false) {
-                                metadata |= DataclassMetadata::UNSAFE_HASH;
+                                params |= DataclassParams::UNSAFE_HASH;
                             }
                             if to_bool(frozen, false) {
-                                metadata |= DataclassMetadata::FROZEN;
+                                params |= DataclassParams::FROZEN;
                             }
                             if to_bool(match_args, true) {
-                                metadata |= DataclassMetadata::MATCH_ARGS;
+                                params |= DataclassParams::MATCH_ARGS;
                             }
                             if to_bool(kw_only, false) {
-                                metadata |= DataclassMetadata::KW_ONLY;
+                                params |= DataclassParams::KW_ONLY;
                             }
                             if to_bool(slots, false) {
-                                metadata |= DataclassMetadata::SLOTS;
+                                params |= DataclassParams::SLOTS;
                             }
                             if to_bool(weakref_slot, false) {
-                                metadata |= DataclassMetadata::WEAKREF_SLOT;
+                                params |= DataclassParams::WEAKREF_SLOT;
                             }
 
-                            overload.set_return_type(Type::DataclassDecorator(metadata));
+                            overload.set_return_type(Type::DataclassDecorator(params));
                         }
                     }
 
-                    _ => {}
+                    Some(KnownFunction::DataclassTransform) => {
+                        if let [eq_default, order_default, kw_only_default, frozen_default, _field_specifiers, _kwargs] =
+                            overload.parameter_types()
+                        {
+                            let mut params = DataclassTransformerParams::empty();
+
+                            if to_bool(eq_default, true) {
+                                params |= DataclassTransformerParams::EQ_DEFAULT;
+                            }
+                            if to_bool(order_default, false) {
+                                params |= DataclassTransformerParams::ORDER_DEFAULT;
+                            }
+                            if to_bool(kw_only_default, false) {
+                                params |= DataclassTransformerParams::KW_ONLY_DEFAULT;
+                            }
+                            if to_bool(frozen_default, false) {
+                                params |= DataclassTransformerParams::FROZEN_DEFAULT;
+                            }
+
+                            overload.set_return_type(Type::DataclassTransformer(params));
+                        }
+                    }
+
+                    _ => {
+                        if let Some(params) = function_type.dataclass_transformer_params(db) {
+                            // This is a call to a custom function that was decorated with `@dataclass_transformer`.
+                            // If this function was called with a keyword argument like `order=False`, we extract
+                            // the argument type and overwrite the corresponding flag in `dataclass_params` after
+                            // constructing them from the `dataclass_transformer`-parameter defaults.
+
+                            let mut dataclass_params = DataclassParams::from(params);
+
+                            if let Some(Some(Type::BooleanLiteral(order))) = callable_signature
+                                .iter()
+                                .nth(overload_index)
+                                .and_then(|signature| {
+                                    let (idx, _) =
+                                        signature.parameters().keyword_by_name("order")?;
+                                    overload.parameter_types().get(idx)
+                                })
+                            {
+                                dataclass_params.set(DataclassParams::ORDER, *order);
+                            }
+
+                            overload.set_return_type(Type::DataclassDecorator(dataclass_params));
+                        }
+                    }
                 },
 
                 Type::ClassLiteral(class) => match class.known(db) {
@@ -824,43 +906,37 @@ impl<'db> CallableBinding<'db> {
 
     fn report_diagnostics(&self, context: &InferContext<'db>, node: ast::AnyNodeRef) {
         if !self.is_callable() {
-            context.report_lint_old(
-                &CALL_NON_CALLABLE,
-                node,
-                format_args!(
+            if let Some(builder) = context.report_lint(&CALL_NON_CALLABLE, node) {
+                builder.into_diagnostic(format_args!(
                     "Object of type `{}` is not callable",
                     self.callable_type.display(context.db()),
-                ),
-            );
+                ));
+            }
             return;
         }
 
         if self.dunder_call_is_possibly_unbound {
-            context.report_lint_old(
-                &CALL_NON_CALLABLE,
-                node,
-                format_args!(
+            if let Some(builder) = context.report_lint(&CALL_NON_CALLABLE, node) {
+                builder.into_diagnostic(format_args!(
                     "Object of type `{}` is not callable (possibly unbound `__call__` method)",
                     self.callable_type.display(context.db()),
-                ),
-            );
+                ));
+            }
             return;
         }
 
         let callable_description = CallableDescription::new(context.db(), self.callable_type);
         if self.overloads.len() > 1 {
-            context.report_lint_old(
-                &NO_MATCHING_OVERLOAD,
-                node,
-                format_args!(
+            if let Some(builder) = context.report_lint(&NO_MATCHING_OVERLOAD, node) {
+                builder.into_diagnostic(format_args!(
                     "No overload{} matches arguments",
                     if let Some(CallableDescription { kind, name }) = callable_description {
                         format!(" of {kind} `{name}`")
                     } else {
                         String::new()
                     }
-                ),
-            );
+                ));
+            }
             return;
         }
 
@@ -881,6 +957,9 @@ impl<'db> CallableBinding<'db> {
 pub(crate) struct Binding<'db> {
     /// Return type of the call.
     return_ty: Type<'db>,
+
+    /// The specialization that was inferred from the argument types, if the callable is generic.
+    specialization: Option<Specialization<'db>>,
 
     /// The formal parameter that each argument is matched with, in argument source order, or
     /// `None` if the argument was not matched to any parameter.
@@ -1017,6 +1096,7 @@ impl<'db> Binding<'db> {
 
         Self {
             return_ty: signature.return_ty.unwrap_or(Type::unknown()),
+            specialization: None,
             argument_parameters: argument_parameters.into_boxed_slice(),
             parameter_tys: vec![None; parameters.len()].into_boxed_slice(),
             errors,
@@ -1029,7 +1109,26 @@ impl<'db> Binding<'db> {
         signature: &Signature<'db>,
         argument_types: &CallArgumentTypes<'_, 'db>,
     ) {
+        // If this overload is generic, first see if we can infer a specialization of the function
+        // from the arguments that were passed in.
         let parameters = signature.parameters();
+        self.specialization = signature.generic_context.map(|generic_context| {
+            let mut builder = SpecializationBuilder::new(db, generic_context);
+            for (argument_index, (_, argument_type)) in argument_types.iter().enumerate() {
+                let Some(parameter_index) = self.argument_parameters[argument_index] else {
+                    // There was an error with argument when matching parameters, so don't bother
+                    // type-checking it.
+                    continue;
+                };
+                let parameter = &parameters[parameter_index];
+                let Some(expected_type) = parameter.annotated_type() else {
+                    continue;
+                };
+                builder.infer(expected_type, argument_type);
+            }
+            builder.build()
+        });
+
         let mut num_synthetic_args = 0;
         let get_argument_index = |argument_index: usize, num_synthetic_args: usize| {
             if argument_index >= num_synthetic_args {
@@ -1052,7 +1151,10 @@ impl<'db> Binding<'db> {
                 continue;
             };
             let parameter = &parameters[parameter_index];
-            if let Some(expected_ty) = parameter.annotated_type() {
+            if let Some(mut expected_ty) = parameter.annotated_type() {
+                if let Some(specialization) = self.specialization {
+                    expected_ty = expected_ty.apply_specialization(db, specialization);
+                }
                 if !argument_type.is_assignable_to(db, expected_ty) {
                     let positional = matches!(argument, Argument::Positional | Argument::Synthetic)
                         && !parameter.is_variadic();
@@ -1074,6 +1176,10 @@ impl<'db> Binding<'db> {
                 self.parameter_tys[parameter_index] = Some(union);
             }
         }
+
+        if let Some(specialization) = self.specialization {
+            self.return_ty = self.return_ty.apply_specialization(db, specialization);
+        }
     }
 
     pub(crate) fn set_return_type(&mut self, return_ty: Type<'db>) {
@@ -1082,6 +1188,10 @@ impl<'db> Binding<'db> {
 
     pub(crate) fn return_type(&self) -> Type<'db> {
         self.return_ty
+    }
+
+    pub(crate) fn specialization(&self) -> Option<Specialization<'db>> {
+        self.specialization
     }
 
     pub(crate) fn parameter_types(&self) -> &[Option<Type<'db>>] {
@@ -1327,10 +1437,9 @@ impl<'db> BindingError<'db> {
                 expected_positional_count,
                 provided_positional_count,
             } => {
-                context.report_lint_old(
-                    &TOO_MANY_POSITIONAL_ARGUMENTS,
-                    Self::get_node(node, *first_excess_argument_index),
-                    format_args!(
+                let node = Self::get_node(node, *first_excess_argument_index);
+                if let Some(builder) = context.report_lint(&TOO_MANY_POSITIONAL_ARGUMENTS, node) {
+                    builder.into_diagnostic(format_args!(
                         "Too many positional arguments{}: expected \
                         {expected_positional_count}, got {provided_positional_count}",
                         if let Some(CallableDescription { kind, name }) = callable_description {
@@ -1338,75 +1447,70 @@ impl<'db> BindingError<'db> {
                         } else {
                             String::new()
                         }
-                    ),
-                );
+                    ));
+                }
             }
 
             Self::MissingArguments { parameters } => {
-                let s = if parameters.0.len() == 1 { "" } else { "s" };
-                context.report_lint_old(
-                    &MISSING_ARGUMENT,
-                    node,
-                    format_args!(
+                if let Some(builder) = context.report_lint(&MISSING_ARGUMENT, node) {
+                    let s = if parameters.0.len() == 1 { "" } else { "s" };
+                    builder.into_diagnostic(format_args!(
                         "No argument{s} provided for required parameter{s} {parameters}{}",
                         if let Some(CallableDescription { kind, name }) = callable_description {
                             format!(" of {kind} `{name}`")
                         } else {
                             String::new()
                         }
-                    ),
-                );
+                    ));
+                }
             }
 
             Self::UnknownArgument {
                 argument_name,
                 argument_index,
             } => {
-                context.report_lint_old(
-                    &UNKNOWN_ARGUMENT,
-                    Self::get_node(node, *argument_index),
-                    format_args!(
+                let node = Self::get_node(node, *argument_index);
+                if let Some(builder) = context.report_lint(&UNKNOWN_ARGUMENT, node) {
+                    builder.into_diagnostic(format_args!(
                         "Argument `{argument_name}` does not match any known parameter{}",
                         if let Some(CallableDescription { kind, name }) = callable_description {
                             format!(" of {kind} `{name}`")
                         } else {
                             String::new()
                         }
-                    ),
-                );
+                    ));
+                }
             }
 
             Self::ParameterAlreadyAssigned {
                 argument_index,
                 parameter,
             } => {
-                context.report_lint_old(
-                    &PARAMETER_ALREADY_ASSIGNED,
-                    Self::get_node(node, *argument_index),
-                    format_args!(
+                let node = Self::get_node(node, *argument_index);
+                if let Some(builder) = context.report_lint(&PARAMETER_ALREADY_ASSIGNED, node) {
+                    builder.into_diagnostic(format_args!(
                         "Multiple values provided for parameter {parameter}{}",
                         if let Some(CallableDescription { kind, name }) = callable_description {
                             format!(" of {kind} `{name}`")
                         } else {
                             String::new()
                         }
-                    ),
-                );
+                    ));
+                }
             }
 
             Self::InternalCallError(reason) => {
-                context.report_lint_old(
-                    &CALL_NON_CALLABLE,
-                    Self::get_node(node, None),
-                    format_args!(
+                let node = Self::get_node(node, None);
+                if let Some(builder) = context.report_lint(&CALL_NON_CALLABLE, node) {
+                    builder.into_diagnostic(format_args!(
                         "Call{} failed: {reason}",
                         if let Some(CallableDescription { kind, name }) = callable_description {
                             format!(" of {kind} `{name}`")
                         } else {
                             String::new()
                         }
-                    ),
-                );
+                    ));
+                }
             }
         }
     }

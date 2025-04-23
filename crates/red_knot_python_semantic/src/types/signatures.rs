@@ -17,7 +17,7 @@ use smallvec::{smallvec, SmallVec};
 
 use super::{definition_expression_type, DynamicType, Type};
 use crate::semantic_index::definition::Definition;
-use crate::types::generics::Specialization;
+use crate::types::generics::{GenericContext, Specialization};
 use crate::types::todo_type;
 use crate::Db;
 use ruff_python_ast::{self as ast, name::Name};
@@ -165,6 +165,7 @@ impl<'db> CallableSignature<'db> {
     /// Return a signature for a dynamic callable
     pub(crate) fn dynamic(signature_type: Type<'db>) -> Self {
         let signature = Signature {
+            generic_context: None,
             parameters: Parameters::gradual_form(),
             return_ty: Some(signature_type),
         };
@@ -176,6 +177,7 @@ impl<'db> CallableSignature<'db> {
     pub(crate) fn todo(reason: &'static str) -> Self {
         let signature_type = todo_type!(reason);
         let signature = Signature {
+            generic_context: None,
             parameters: Parameters::todo(),
             return_ty: Some(signature_type),
         };
@@ -210,6 +212,9 @@ impl<'a, 'db> IntoIterator for &'a CallableSignature<'db> {
 /// The signature of one of the overloads of a callable.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, salsa::Update)]
 pub struct Signature<'db> {
+    /// The generic context for this overload, if it is generic.
+    pub(crate) generic_context: Option<GenericContext<'db>>,
+
     /// Parameters, in source order.
     ///
     /// The ordering of parameters in a valid signature must be: first positional-only parameters,
@@ -227,23 +232,28 @@ pub struct Signature<'db> {
 impl<'db> Signature<'db> {
     pub(crate) fn new(parameters: Parameters<'db>, return_ty: Option<Type<'db>>) -> Self {
         Self {
+            generic_context: None,
             parameters,
             return_ty,
         }
     }
 
-    /// Return a todo signature: (*args: Todo, **kwargs: Todo) -> Todo
-    #[allow(unused_variables)] // 'reason' only unused in debug builds
-    pub(crate) fn todo(reason: &'static str) -> Self {
-        Signature {
-            parameters: Parameters::todo(),
-            return_ty: Some(todo_type!(reason)),
+    pub(crate) fn new_generic(
+        generic_context: Option<GenericContext<'db>>,
+        parameters: Parameters<'db>,
+        return_ty: Option<Type<'db>>,
+    ) -> Self {
+        Self {
+            generic_context,
+            parameters,
+            return_ty,
         }
     }
 
     /// Return a typed signature from a function definition.
     pub(super) fn from_function(
         db: &'db dyn Db,
+        generic_context: Option<GenericContext<'db>>,
         definition: Definition<'db>,
         function_node: &ast::StmtFunctionDef,
     ) -> Self {
@@ -256,6 +266,7 @@ impl<'db> Signature<'db> {
         });
 
         Self {
+            generic_context,
             parameters: Parameters::from_parameters(
                 db,
                 definition,
@@ -265,15 +276,30 @@ impl<'db> Signature<'db> {
         }
     }
 
+    pub(crate) fn normalized(&self, db: &'db dyn Db) -> Self {
+        Self {
+            generic_context: self.generic_context,
+            parameters: self
+                .parameters
+                .iter()
+                .map(|param| param.normalized(db))
+                .collect(),
+            return_ty: self.return_ty.map(|return_ty| return_ty.normalized(db)),
+        }
+    }
+
     pub(crate) fn apply_specialization(
-        &mut self,
+        &self,
         db: &'db dyn Db,
         specialization: Specialization<'db>,
-    ) {
-        self.parameters.apply_specialization(db, specialization);
-        self.return_ty = self
-            .return_ty
-            .map(|ty| ty.apply_specialization(db, specialization));
+    ) -> Self {
+        Self {
+            generic_context: self.generic_context,
+            parameters: self.parameters.apply_specialization(db, specialization),
+            return_ty: self
+                .return_ty
+                .map(|ty| ty.apply_specialization(db, specialization)),
+        }
     }
 
     /// Return the parameters in this signature.
@@ -283,6 +309,7 @@ impl<'db> Signature<'db> {
 
     pub(crate) fn bind_self(&self) -> Self {
         Self {
+            generic_context: self.generic_context,
             parameters: Parameters::new(self.parameters().iter().skip(1).cloned()),
             return_ty: self.return_ty,
         }
@@ -973,10 +1000,15 @@ impl<'db> Parameters<'db> {
         )
     }
 
-    fn apply_specialization(&mut self, db: &'db dyn Db, specialization: Specialization<'db>) {
-        self.value
-            .iter_mut()
-            .for_each(|param| param.apply_specialization(db, specialization));
+    fn apply_specialization(&self, db: &'db dyn Db, specialization: Specialization<'db>) -> Self {
+        Self {
+            value: self
+                .value
+                .iter()
+                .map(|param| param.apply_specialization(db, specialization))
+                .collect(),
+            is_gradual: self.is_gradual,
+        }
     }
 
     pub(crate) fn len(&self) -> usize {
@@ -1140,11 +1172,14 @@ impl<'db> Parameter<'db> {
         self
     }
 
-    fn apply_specialization(&mut self, db: &'db dyn Db, specialization: Specialization<'db>) {
-        self.annotated_type = self
-            .annotated_type
-            .map(|ty| ty.apply_specialization(db, specialization));
-        self.kind.apply_specialization(db, specialization);
+    fn apply_specialization(&self, db: &'db dyn Db, specialization: Specialization<'db>) -> Self {
+        Self {
+            annotated_type: self
+                .annotated_type
+                .map(|ty| ty.apply_specialization(db, specialization)),
+            kind: self.kind.apply_specialization(db, specialization),
+            form: self.form,
+        }
     }
 
     /// Strip information from the parameter so that two equivalent parameters compare equal.
@@ -1334,14 +1369,27 @@ pub(crate) enum ParameterKind<'db> {
 }
 
 impl<'db> ParameterKind<'db> {
-    fn apply_specialization(&mut self, db: &'db dyn Db, specialization: Specialization<'db>) {
+    fn apply_specialization(&self, db: &'db dyn Db, specialization: Specialization<'db>) -> Self {
         match self {
-            Self::PositionalOnly { default_type, .. }
-            | Self::PositionalOrKeyword { default_type, .. }
-            | Self::KeywordOnly { default_type, .. } => {
-                *default_type = default_type.map(|ty| ty.apply_specialization(db, specialization));
-            }
-            Self::Variadic { .. } | Self::KeywordVariadic { .. } => {}
+            Self::PositionalOnly { default_type, name } => Self::PositionalOnly {
+                default_type: default_type
+                    .as_ref()
+                    .map(|ty| ty.apply_specialization(db, specialization)),
+                name: name.clone(),
+            },
+            Self::PositionalOrKeyword { default_type, name } => Self::PositionalOrKeyword {
+                default_type: default_type
+                    .as_ref()
+                    .map(|ty| ty.apply_specialization(db, specialization)),
+                name: name.clone(),
+            },
+            Self::KeywordOnly { default_type, name } => Self::KeywordOnly {
+                default_type: default_type
+                    .as_ref()
+                    .map(|ty| ty.apply_specialization(db, specialization)),
+                name: name.clone(),
+            },
+            Self::Variadic { .. } | Self::KeywordVariadic { .. } => self.clone(),
         }
     }
 }
@@ -1358,7 +1406,7 @@ mod tests {
     use super::*;
     use crate::db::tests::{setup_db, TestDb};
     use crate::symbol::global_symbol;
-    use crate::types::{FunctionType, KnownClass};
+    use crate::types::{FunctionSignature, FunctionType, KnownClass};
     use ruff_db::system::DbWithWritableSystem as _;
 
     #[track_caller]
@@ -1605,6 +1653,9 @@ mod tests {
         let expected_sig = func.internal_signature(&db);
 
         // With no decorators, internal and external signature are the same
-        assert_eq!(func.signature(&db), &expected_sig);
+        assert_eq!(
+            func.signature(&db),
+            &FunctionSignature::Single(expected_sig)
+        );
     }
 }
