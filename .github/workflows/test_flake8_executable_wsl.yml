@@ -117,6 +117,7 @@ jobs:
           distro: ${{ needs.find_wsl_cache.outputs.distro }}
           working-dir: ${{ steps.import-wsl.outputs.workspace_path }}
           exec: |
+            set -ex
             mkdir /tmp/target
             mkdir target || true
             mount --bind /tmp/target target
@@ -126,6 +127,7 @@ jobs:
           distro: ${{ needs.find_wsl_cache.outputs.distro }}
           working-dir: ${{ steps.import-wsl.outputs.workspace_path }}
           exec: |
+            set -ex
             source $HOME/.cargo/env
             export NEXTEST_PROFILE="ci-short"
             RUFF_TEST_ENVIRONMENT="ntfs" cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
@@ -165,10 +167,6 @@ jobs:
           working-dir: ${{ needs.find_wsl_cache.outputs.ext4_workspace }}
           exec: |
             set -ex
-            pwd
-            ls -al
-            echo "$HOME/.cargo/env"
-            cat "$HOME/.cargo/env"
             source "$HOME/.cargo/env"
             export NEXTEST_PROFILE="ci-short"
             cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
