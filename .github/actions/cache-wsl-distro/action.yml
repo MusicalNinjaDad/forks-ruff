@@ -28,9 +28,9 @@ runs:
         $ErrorActionPreference = 'Stop'
         $env:WSL_UTF8=1
         Write-Output "Updating WSL"
-        wsl --update --web-download
+        wsl --update
         Write-Output "Installing $env:DISTRO"
-        wsl --install $env:DISTRO --web-download --no-launch
+        wsl --install $env:DISTRO --no-launch
         Write-Output "Finished installing $env:DISTRO"
         wsl -l -v
     - name: "Validate Installation"

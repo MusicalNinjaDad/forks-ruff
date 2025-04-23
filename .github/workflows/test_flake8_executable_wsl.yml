@@ -35,7 +35,7 @@ jobs:
     env:
       CACHE_FILE: "ubuntu_ruff.vhdx"
       CACHE_DIR: ".wsl_cache"
-      DISTRO: "Ubuntu"
+      DISTRO: "Ubuntu-24.04"
       EXT4_WORKSPACE: "/workspaces/${{ github.repository }}"
     outputs:
       cache_key: ${{ steps.calc_vars.outputs.cache_key }}
@@ -60,8 +60,8 @@ jobs:
           Write-Output "vhdx_file=$vhdxPath"
           Write-Output "vhdx_file=$vhdxPath" >> $env:GITHUB_OUTPUT
           $workflowHash = (Get-FileHash .github/actions/cache-wsl-distro/action.yml).Hash
-          Write-Output "cache_key=wsl_distro_cache-$workflowHash"
-          Write-Output "cache_key=wsl_distro_cache-$workflowHash" >> $env:GITHUB_OUTPUT
+          Write-Output "cache_key=wsl_distro_cache-$env:DISTRO-$workflowHash"
+          Write-Output "cache_key=wsl_distro_cache-$env:DISTRO-$workflowHash" >> $env:GITHUB_OUTPUT
       - id: check-wsl-cache
         uses: actions/cache/restore@v4
         with:
