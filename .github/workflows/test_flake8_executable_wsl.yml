@@ -164,7 +164,12 @@ jobs:
           distro: ${{ needs.find_wsl_cache.outputs.distro }}
           working-dir: ${{ needs.find_wsl_cache.outputs.ext4_workspace }}
           exec: |
-            source $HOME/.cargo/env
+            set -ex
+            pwd
+            ls -al
+            echo "$HOME/.cargo/env"
+            cat "$HOME/.cargo/env"
+            source "$HOME/.cargo/env"
             export NEXTEST_PROFILE="ci-short"
             cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
 
