@@ -1,4 +1,4 @@
-## comparing `931c66ad19dcaab4ef5feb3c26378f1d9946c31b` to main ...
+## comparing `931c66ad19dcaab4ef5feb3c26378f1d9946c31b` to main
 
 ```text
 cargo bench -p ruff_benchmark --bench flake8_executable -- --baseline=main
@@ -48,7 +48,7 @@ Found 98 outliers among 1000 measurements (9.80%)
   53 (5.30%) high severe
 ```
 
-## The original (re-run) benchmarking `main` at 1000 samples in 20s ...
+## The original (re-run) benchmarking `main` at 1000 samples in 20s
 
 ```text
 cargo bench -p ruff_benchmark --bench flake8_executable -- --save-baseline=main
