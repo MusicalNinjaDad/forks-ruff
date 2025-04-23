@@ -21,6 +21,7 @@ runs:
   using: "composite"
   steps:
     - name: "Update WSL"
+      shell: pwsh
       run: |
         wsl --update --web-download
     - name: "Setup WSL"
