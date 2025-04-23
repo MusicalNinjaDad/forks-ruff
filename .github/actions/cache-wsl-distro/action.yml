@@ -20,14 +20,15 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: "Update WSL"
+    - name: "Update WSL & install ${{ inputs.distro }}"
       shell: pwsh
+      env:
+        DISTRO: ${{ inputs.distro }}
       run: |
+        $ErrorActionPreference = 'Stop'
+        $env:WSL_UTF8=1
         wsl --update --web-download
-    - name: "Setup WSL"
-      uses: ubuntu/WSL/.github/actions/wsl-install@main
-      with:
-        distro: ${{ inputs.distro }}
+        wsl --install $env:DISTRO --web-download --no-launch
     - name: "Validate Installation"
       uses: ubuntu/WSL/.github/actions/wsl-bash@main
       with:
