@@ -20,19 +20,14 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: "Update WSL & install ${{ inputs.distro }}"
-      shell: pwsh
-      env:
-        DISTRO: ${{ inputs.distro }}
-      run: |
-        $ErrorActionPreference = 'Stop'
-        $env:WSL_UTF8=1
-        Write-Output "Updating WSL"
-        wsl --update
-        Write-Output "Installing $env:DISTRO"
-        wsl --install $env:DISTRO --no-launch
-        Write-Output "Finished installing $env:DISTRO"
-        wsl -l -v
+    - name: "Install ${{ inputs.distro }} with build-essential & mold"
+      uses: Vampire/setup-wsl@v5
+      with:
+        distribution: ${{ inputs.distro }}
+        use-cache: 'false'
+        additional-packages:
+          build-essential
+          mold
     - name: "Validate Installation"
       uses: ubuntu/WSL/.github/actions/wsl-bash@main
       with:
@@ -48,10 +43,6 @@ runs:
         exec: |
           set -ex
           export CI=1
-          echo "::group::Build tools"
-          apt update
-          apt install -y build-essential mold
-          echo "::endgroup::"
           echo "::group::Rustup"
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
           echo "::endgroup::"
