@@ -76,7 +76,7 @@ pub(crate) fn shebang_missing_executable_file(
 #[cfg(not(target_family = "unix"))]
 pub(crate) fn shebang_missing_executable_file(
     _filepath: &Path,
-    _projectroot: &Path,
+    _settings: &LinterSettings,
 ) -> Option<Diagnostic> {
     None
 }
