@@ -183,6 +183,18 @@ jobs:
         with:
           persist-credentials: false
       - uses: Swatinem/rust-cache@v2
+        if: runner.os != 'Windows'
+        # Known performance problems windows - see https://github.com/Swatinem/rust-cache/issues/169
+      - uses: actions/cache@v4
+        if: runner.os == 'Windows'
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}  
       - name: "Install Rust toolchain"
         run: rustup show
       - name: "Install mold"
