@@ -7,7 +7,6 @@ use ruff_text_size::{Ranged, TextRange};
 use ruff_diagnostics::{Diagnostic, Violation};
 use ruff_macros::{derive_message_formats, ViolationMetadata};
 
-use crate::registry::AsRule;
 #[cfg(target_family = "unix")]
 use crate::rules::flake8_executable::helpers::{executable_by_default, is_executable};
 use crate::settings::LinterSettings;
