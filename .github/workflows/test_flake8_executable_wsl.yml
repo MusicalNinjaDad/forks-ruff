@@ -177,7 +177,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     name: "Test on ${{ matrix.os }}"
-    timeout-minutes: 5
+    timeout-minutes: ${{ matrix.os == 'windows-latest' && 10 || 5 }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -186,6 +186,7 @@ jobs:
       - name: "Install Rust toolchain"
         run: rustup show
       - name: "Install mold"
+        if: runner.os != 'Windows'
         uses: rui314/setup-mold@v1
       - name: "Install cargo nextest"
         uses: taiki-e/install-action@v2
