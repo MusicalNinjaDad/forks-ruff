@@ -2,7 +2,7 @@
 pub(crate) mod helpers;
 pub(crate) mod rules;
 
-#[cfg(unix)]
+#[cfg(any(unix, windows))]
 #[cfg(test)]
 mod tests {
     use std::path::{Path, PathBuf};
@@ -30,7 +30,7 @@ mod tests {
     }
 
     #[cfg_attr(
-        not(test_environment = "ntfs"),
+        all(unix, not(test_environment = "ntfs")),
         test_matrix(
             ["EXE001_1.py", "EXE001_2.py", "EXE001_3.py",
             "EXE002_1.py", "EXE002_2.py", "EXE002_3.py",
@@ -41,7 +41,7 @@ mod tests {
         )
     )]
     #[cfg_attr(
-        test_environment = "ntfs",
+        any(windows, all(unix, test_environment = "ntfs")),
         test_matrix(
             ["EXE001_1_wsl.py", "EXE001_2.py", "EXE001_3.py",
             "EXE002_1_wsl.py", "EXE002_2.py", "EXE002_3.py",

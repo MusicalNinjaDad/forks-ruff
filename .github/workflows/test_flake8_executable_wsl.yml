@@ -171,8 +171,12 @@ jobs:
             export NEXTEST_PROFILE="ci-short"
             cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
 
-  test_linux:
-    runs-on: ubuntu-latest
+  test_non_wsl:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    name: "Test on ${{ matrix.os }}"
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
