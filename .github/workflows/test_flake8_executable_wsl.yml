@@ -121,16 +121,6 @@ jobs:
             mkdir /tmp/target
             mkdir target || true
             mount --bind /tmp/target target
-      - uses: actions/cache@v4
-        with:
-          path: |
-            \\wsl$\${{ needs.find_wsl_cache.outputs.distro }}\root\.cargo\bin\
-            \\wsl$\${{ needs.find_wsl_cache.outputs.distro }}\root\.cargo\registry\index\
-            \\wsl$\${{ needs.find_wsl_cache.outputs.distro }}\root\.cargo\registry\cache\
-            \\wsl$\${{ needs.find_wsl_cache.outputs.distro }}\root\.cargo\git\db\
-            \\wsl$\${{ needs.find_wsl_cache.outputs.distro }}\tmp\target\
-          key: ${{ github.job }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ github.job }}-cargo
       - name: "Run tests"
         uses: ubuntu/WSL/.github/actions/wsl-bash@main
         with:
@@ -170,16 +160,6 @@ jobs:
         with:
           distro: ${{ needs.find_wsl_cache.outputs.distro }}
           working-dir: ${{ needs.find_wsl_cache.outputs.ext4_workspace }}
-      - uses: actions/cache@v4
-        with:
-          path: |
-            \\wsl$\${{ needs.find_wsl_cache.outputs.distro }}\root\.cargo\bin\
-            \\wsl$\${{ needs.find_wsl_cache.outputs.distro }}\root\.cargo\registry\index\
-            \\wsl$\${{ needs.find_wsl_cache.outputs.distro }}\root\.cargo\registry\cache\
-            \\wsl$\${{ needs.find_wsl_cache.outputs.distro }}\root\.cargo\git\db\
-            \\wsl$\${{ needs.find_wsl_cache.outputs.distro }}\${{ needs.find_wsl_cache.outputs.ext4_workspace }}\target\
-          key: ${{ github.job }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ github.job }}-cargo
       - name: "Run tests"
         uses: ubuntu/WSL/.github/actions/wsl-bash@main
         with:
