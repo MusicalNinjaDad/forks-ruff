@@ -21,13 +21,13 @@ runs:
   using: "composite"
   steps:
     - name: "Install ${{ inputs.distro }} with build-essential & mold"
-      uses: Vampire/setup-wsl@v5
+      uses: Vampire/setup-wsl@f40fb59d850112c9a292b0218bca8271305b9127 # v5.0.0
       with:
         distribution: ${{ inputs.distro }}
         use-cache: "false"
         additional-packages: build-essential mold
     - name: "Validate Installation"
-      uses: ubuntu/WSL/.github/actions/wsl-bash@main
+      uses: ubuntu/WSL/.github/actions/wsl-bash@dd06b19f5acdd0d085ab539427980e49bb5e8143 # 2024-02-01
       with:
         distro: ${{ inputs.distro }}
         exec: |
@@ -35,7 +35,7 @@ runs:
           uname -a
           df -T
     - name: "Install Toolchain"
-      uses: ubuntu/WSL/.github/actions/wsl-bash@main
+      uses: ubuntu/WSL/.github/actions/wsl-bash@dd06b19f5acdd0d085ab539427980e49bb5e8143 # 2024-02-01
       with:
         distro: ${{ inputs.distro }}
         exec: |
@@ -53,7 +53,7 @@ runs:
           cargo binstall cargo-nextest --secure -y
           echo "::endgroup::"
     - name: "Create dir for ext4 workspace"
-      uses: ubuntu/WSL/.github/actions/wsl-bash@main
+      uses: ubuntu/WSL/.github/actions/wsl-bash@dd06b19f5acdd0d085ab539427980e49bb5e8143 # 2024-02-01
       with:
         distro: ${{ inputs.distro }}
         exec: |
