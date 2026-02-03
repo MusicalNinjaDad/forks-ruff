@@ -130,7 +130,7 @@ jobs:
             set -ex
             source $HOME/.cargo/env
             export NEXTEST_PROFILE="ci-short"
-            RUFF_TEST_ENVIRONMENT="ntfs" cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
+            RUFF_TEST_ENVIRONMENT="ntfs" cargo insta test --check --no-fail-fast --test-runner nextest --package ruff_linter -- flake8_executable
 
   test_wsl_ext4:
     needs: find_wsl_cache
@@ -169,7 +169,7 @@ jobs:
             set -ex
             source "$HOME/.cargo/env"
             export NEXTEST_PROFILE="ci-short"
-            cargo insta test --check --test-runner nextest --package ruff_linter -- flake8_executable
+            cargo insta test --check --no-fail-fast --test-runner nextest --package ruff_linter -- flake8_executable
 
   test_non_wsl:
     strategy:
