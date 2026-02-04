@@ -26,9 +26,15 @@ use crate::rules::flake8_executable::helpers::is_executable;
 /// Otherwise, remove the executable bit from the file
 /// (e.g., `chmod -x __main__.py` or `git update-index --chmod=-x __main__.py`).
 ///
+/// ## Filesystem considerations
+///
 /// A file is considered executable if it has the executable bit set (i.e., its
 /// permissions mode intersects with `0o111`). As such, _this rule is only
-/// available on Unix-like systems_, and is not enforced on Windows or WSL.
+/// available on Unix-like filesystems_.
+///
+/// It is not enforced on Windows, nor on Unix-like systems if the _project root_
+/// is located on a _filesystem which does not support Unix-like permissions_
+/// (e.g. mounting a removable drive using FAT or using /mnt/c/ on WSL).
 ///
 /// ## References
 /// - [Python documentation: Executable Python Scripts](https://docs.python.org/3/tutorial/appendix.html#executable-python-scripts)
