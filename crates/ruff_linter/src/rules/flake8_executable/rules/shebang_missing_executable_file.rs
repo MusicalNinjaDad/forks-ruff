@@ -39,6 +39,7 @@ use crate::rules::flake8_executable::helpers::{executable_by_default, is_executa
 /// ## References
 /// - [Python documentation: Executable Python Scripts](https://docs.python.org/3/tutorial/appendix.html#executable-python-scripts)
 /// - [Git documentation: `git update-index --chmod`](https://git-scm.com/docs/git-update-index#Documentation/git-update-index.txt---chmod-x)
+/// - [WSL documentation: Working across filesystems](https://learn.microsoft.com/en-us/windows/wsl/filesystems)
 #[derive(ViolationMetadata)]
 #[violation_metadata(stable_since = "v0.0.233")]
 pub(crate) struct ShebangMissingExecutableFile;
