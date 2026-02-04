@@ -45,17 +45,19 @@ mod tests {
     #[test_case(Path::new("EXE005_1.py"))]
     #[test_case(Path::new("EXE005_2.py"))]
     #[test_case(Path::new("EXE005_3.py"))]
-    fn rules(path: &Path) -> Result<()> {
+    fn rules_no_pyproject_toml(path: &Path) -> Result<()> {
         let snapshot = path.to_string_lossy().into_owned();
-        let diagnostics = test_path(
-            Path::new("flake8_executable").join(path).as_path(),
-            &settings::LinterSettings::for_rules(vec![
+        let settings = settings::LinterSettings::for_rules(vec![
                 Rule::ShebangNotExecutable,
                 Rule::ShebangMissingExecutableFile,
                 Rule::ShebangLeadingWhitespace,
                 Rule::ShebangNotFirstLine,
                 Rule::ShebangMissingPython,
-            ]),
+            ]);
+        assert!(!&settings.project_root.join("pyproject.toml").exists(), "unexpected pyproject.toml found: {}", &settings.project_root.join("pyproject.toml").to_string_lossy());
+        let diagnostics = test_path(
+            Path::new("flake8_executable").join(path).as_path(),
+            &settings,
         )?;
         assert_diagnostics!(snapshot, diagnostics);
         Ok(())
