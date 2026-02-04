@@ -5,7 +5,7 @@ use ruff_macros::{ViolationMetadata, derive_message_formats};
 use crate::Violation;
 use crate::checkers::ast::LintContext;
 #[cfg(target_family = "unix")]
-use crate::rules::flake8_executable::helpers::is_executable;
+use crate::rules::flake8_executable::helpers::{executable_by_default, is_executable};
 
 /// ## What it does
 /// Checks for executable `.py` files that do not have a shebang.
@@ -54,10 +54,13 @@ impl Violation for ShebangMissingExecutableFile {
 #[cfg(target_family = "unix")]
 pub(crate) fn shebang_missing_executable_file(filepath: &Path, context: &LintContext) {
     if let Ok(true) = is_executable(filepath) {
-        context.report_diagnostic_if_enabled(
-            ShebangMissingExecutableFile,
-            ruff_text_size::TextRange::default(),
-        );
+        //nested for performance - no need to check filesystem unless this lint fails
+        if !executable_by_default(context.settings()) {
+            context.report_diagnostic_if_enabled(
+                ShebangMissingExecutableFile,
+                ruff_text_size::TextRange::default(),
+            );
+        }
     }
 }
 
