@@ -29,6 +29,17 @@ use crate::rules::flake8_executable::helpers::is_executable;
 /// permissions mode intersects with `0o111`). As such, _this rule is only
 /// available on Unix-like systems_, and is not enforced on Windows or WSL.
 ///
+/// ## Filesystem considerations
+///
+/// A file is considered executable if it has the executable bit set (i.e., its
+/// permissions mode intersects with `0o111`). As such, _this rule is only
+/// available on Unix-like filesystems_.
+///
+/// It is not enforced on Windows, and will never trigger on Unix-like systems
+/// if the _project root_ is located on a _filesystem which does not support
+/// Unix-like permissions_ (e.g. mounting a removable drive using FAT or using
+/// /mnt/c/ on WSL).
+///
 /// ## Example
 /// ```python
 /// #!/usr/bin/env python
