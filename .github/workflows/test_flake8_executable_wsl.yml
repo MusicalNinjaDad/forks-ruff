@@ -174,7 +174,7 @@ jobs:
   test_non_wsl:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, ubuntu-slim]
     runs-on: ${{ matrix.os }}
     name: "Test on ${{ matrix.os }}"
     timeout-minutes: ${{ matrix.os == 'windows-latest' && 10 || 5 }}
@@ -197,7 +197,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
       - name: "Install Rust toolchain"
-        run: rustup show
+        uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: "Install mold"
         if: runner.os != 'Windows'
         uses: rui314/setup-mold@e16410e7f8d9e167b74ad5697a9089a35126eb50 # v1
